@@ -2,3 +2,9 @@ nimcache/
 nimblecache/
 htmldocs/
 bin/
+assets/
+
+*.a
+*.dll
+*.exe
+README-SDL.txt
