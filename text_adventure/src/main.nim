@@ -7,8 +7,8 @@ type
   EntityId = uint64
   Color = enum
     black = 0
-    navy
-    maroon
+    anthracite
+    plum
     darkGreen
     brown
     darkGrey
@@ -17,9 +17,9 @@ type
     red
     orange
     yellow
-    lightGreen
+    brightGreen
     blue
-    purple
+    taupe
     pink
     peach
 
