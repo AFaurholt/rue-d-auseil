@@ -67,18 +67,19 @@ proc gameDraw() =
   totalLines = gameData.getRoomLines(gameData.startRoom, screenWidth - 12).len
   var w = screenWidth - 2
   cls()
+  let ratioVisible:float = float(maxLines) / float(totalLines)
+  let visibleHeight:float = float(fontHeight()) * float(maxLines) + 4
+  let scrollbarHeight:float = ratioVisible * visibleHeight
   #textbox
   setColor(7)
-  boxfill(4,4, screenWidth - 16, fontHeight() * maxLines + 4)
+  boxfill(4,4, screenWidth - 16, visibleHeight)
   #grey part of scroll
   setColor(6)
-  boxfill(screenWidth - 10, 4, 6, fontHeight() * maxLines + 4)
+  boxfill(screenWidth - 10, 4, 6, visibleHeight)
   #white part of scroll
   setColor(7)
-  let ratioVisible:float = (maxLines + 1) / totalLines
-  let visibleHeight:float = float fontHeight() * maxLines
-  let scrollbarHeight:float = ratioVisible * visibleHeight
-  boxfill(screenWidth - 10, float(scrollbarHeight) * float(currentLine) + 4, 6, float scrollbarHeight + 4)
+  
+  boxfill(screenWidth - 10, float(currentLine) / float(totalLines) * float(visibleHeight) + 4, 6, float scrollbarHeight)
   setColor(1)
   #6, 6, screenWidth - 12
   #do this only once later
