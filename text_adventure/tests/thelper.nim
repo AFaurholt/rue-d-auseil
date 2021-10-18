@@ -45,7 +45,7 @@ proc testGetGameData() =
   expected.canPickup["bedstead"] = false
   expected.canPickup["duvet"] = false
   expected.canPickup["crucifix"] = true
-  expected.inRoom["bedstead"] = @["bedroom"]
+  expected.inventory["bedroom"] = @["bedstead"]
   expected.exits["hall"] = @["door to the bedroom"]
   expected.exits["bedroom"] = @["door to the entrance"]
   expected.startRoom = "hall"
@@ -56,7 +56,7 @@ proc testGetGameData() =
   assert expected.selfDescriptions == actual.selfDescriptions, "\ngot: " & $actual.selfDescriptions & "\nexpected: " & $expected.selfDescriptions
   assert expected.roomDescriptions == actual.roomDescriptions, "\ngot: " & $actual.roomDescriptions & "\nexpected: " & $expected.roomDescriptions
   assert expected.canPickup == actual.canPickup, "\ngot: " & $actual.canPickup & "\nexpected: " & $expected.canPickup
-  assert expected.inRoom == actual.inRoom, "\ngot: " & $actual.inRoom & "\nexpected: " & $expected.inRoom
+  assert expected.inventory == actual.inventory, "\ngot: " & $actual.inventory & "\nexpected: " & $expected.inventory
   assert expected.exits == actual.exits, "\ngot: " & $actual.exits & "\nexpected: " & $expected.exits
   assert expected.startRoom == actual.startRoom, "\ngot: " & $actual.startRoom & "\nexpected: " & $expected.startRoom
 testGetGameData()

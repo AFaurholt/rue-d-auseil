@@ -1,2 +1,3 @@
 title:Entrance door
 leadsTo:hall
+roomDescription:missing

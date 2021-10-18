@@ -9,7 +9,7 @@ type
     selfDescriptions*: TableRef[string, string]
     roomDescriptions*: TableRef[string, string]
     canPickup*: TableRef[string, bool]
-    inRoom*: TableRef[string, seq[string]]
+    inventory*: TableRef[string, seq[string]]
     exits*: TableRef[string, seq[string]]
 
 const
@@ -40,9 +40,15 @@ func newGameData*(): GameData =
     ,selfDescriptions: newTable[string, string]()
     ,roomDescriptions: newTable[string, string]()
     ,canPickup: newTable[string, bool]()
-    ,inRoom: newTable[string, seq[string]]()
+    ,inventory: newTable[string, seq[string]]()
     ,exits: newTable[string, seq[string]]()
   )
+
+proc addToInventory*(inv: var TableRef[string, seq[string]], key: string, val: string) =
+  if key in inv:
+    inv[key].add(val)
+  else:
+    inv[key] = @[val]
 
 proc readAllPath*(path: string): string =
   let file = open(path)
@@ -72,7 +78,8 @@ proc getGameDataFromDir*(path: string, data: var GameData) =
         of "pickup":
           data.canPickup[name] = pair[1].parseBool()
         of "inRoom":
-          data.inRoom[name] = pair[1].split(",")
+          for room in pair[1].split(","):
+            data.inventory.addToInventory(room, name)
         of "exits":
           data.exits[name] = pair[1].split(",")
         of "startRoom":
@@ -86,7 +93,7 @@ proc getAllGameData*(): GameData =
     ,selfDescriptions: newTable[string, string]()
     ,roomDescriptions: newTable[string, string]()
     ,canPickup: newTable[string, bool]()
-    ,inRoom: newTable[string, seq[string]]()
+    ,inventory: newTable[string, seq[string]]()
     ,exits: newTable[string, seq[string]]()
   )
   

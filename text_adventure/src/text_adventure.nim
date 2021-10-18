@@ -7,14 +7,33 @@ import text_adventure/helper
 var textInputString: string
 var textInputEventListener: EventListener
 var step = 0
-var frame: uint
+var frame: uint = 0
 var scale = 4
+var maxLines = 3
+var currentLine = 0
+var totalLines = 0
 
 let gameData = getAllGameData()
 
+func getSelfDesc(gameData: GameData, key: string): string =
+  result = gameData.descriptions[gameData.selfDescriptions[key]]
+func getRoomDesc(gameData: GameData, key: string): string =
+  result = gameData.descriptions[gameData.roomDescriptions[key]]
+
+proc getRoomLines(gameData: GameData, room: string, width: int): seq[string] =
+  var desc = gameData.getSelfDesc(room)
+  if room in gameData.inventory:
+    for item in gameData.inventory[room]:
+      desc &= "\n" & gameData.getRoomDesc(item)
+  if room in gameData.exits:
+    for item in gameData.exits[room]:
+      desc &= "\n" & gameData.getRoomDesc(item)
+  result = richWrapLines(desc, width)
+
 proc gameInit() =
-  loadFont(0, "compass-pro-v1.1.png")
+  loadFont(0, "fonts/compass-pro-v1.1.png")
   setFont(0)
+  echo "font loaded"
   textInputString = ""
   textInputEventListener = addEventListener(proc(ev: Event): bool =
     if ev.kind == ekTextInput:
@@ -26,6 +45,9 @@ proc gameUpdate(dt: float32) =
   frame.inc()
   if frame mod 5 == 0:
     step += 1
+
+  if keyp(K_UP) and currentLine > 0: currentLine -= 1
+  if keyp(K_DOWN) and currentLine < totalLines - maxLines: currentLine += 1
 
   if keyp(K_F1):
     if scale > 1:
@@ -42,16 +64,26 @@ proc gameUpdate(dt: float32) =
     setTargetSize(windowWidth div scale, windowHeight div scale)
 
 proc gameDraw() =
+  totalLines = gameData.getRoomLines(gameData.startRoom, screenWidth - 12).len
   var w = screenWidth - 2
   cls()
+  #textbox
   setColor(7)
-  #boxfill(4,4, screenWidth - 16, fontHeight() * richWrapLines(descriptions[0], w).len + 4)
+  boxfill(4,4, screenWidth - 16, fontHeight() * maxLines + 4)
+  #grey part of scroll
   setColor(6)
-  #boxfill(screenWidth - 10, 4, 6, fontHeight() * richWrapLines(descriptions[0], w).len + 4)
+  boxfill(screenWidth - 10, 4, 6, fontHeight() * maxLines + 4)
+  #white part of scroll
   setColor(7)
-  boxfill(screenWidth - 10, 4, 6, 4)
+  let ratioVisible:float = (maxLines + 1) / totalLines
+  let visibleHeight:float = float fontHeight() * maxLines
+  let scrollbarHeight:float = ratioVisible * visibleHeight
+  boxfill(screenWidth - 10, float(scrollbarHeight) * float(currentLine) + 4, 6, float scrollbarHeight + 4)
   setColor(1)
-  #richPrintWrap(descriptions[0], 6, 6, screenWidth - 12, step = step)
+  #6, 6, screenWidth - 12
+  #do this only once later
+  for idx, line in gameData.getRoomLines(gameData.startRoom, screenWidth - 12)[currentLine .. currentLine + maxLines - 1]:
+    richPrint(line, 6, 6 + fontHeight() * idx)
   setColor(7)
   richPrintWrap(">" & textInputString, 1, screenHeight - fontHeight() - 2, w)
 

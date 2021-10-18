@@ -13,8 +13,8 @@ srcDir = "src"
 
 import strformat
 
-const releaseOpts = "-d:danger"
-const debugOpts = "-d:debug"
+const releaseOpts = "-d:danger -d:gif"
+const debugOpts = "-d:debug -d:gif"
 
 task test, "Runs testament":
   exec &"testament pattern \"tests/*.nim\""
