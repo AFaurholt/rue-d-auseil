@@ -1,0 +1,3 @@
+title:Duvet
+selfDescription:duvet self
+pickup:false

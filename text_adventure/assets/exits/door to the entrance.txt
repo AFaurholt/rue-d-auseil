@@ -1,0 +1,2 @@
+title:Entrance door
+leadsTo:hall

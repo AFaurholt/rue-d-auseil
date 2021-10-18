@@ -1,0 +1,5 @@
+title:Bedstead
+selfDescription:bedstead self
+roomDescription:bedstead room
+pickup:false
+inRoom:bedroom

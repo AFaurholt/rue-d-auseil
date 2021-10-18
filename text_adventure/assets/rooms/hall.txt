@@ -1,0 +1,4 @@
+title:Hall
+selfDescription:
+exits:door to the bedroom
+startRoom

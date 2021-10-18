@@ -1,0 +1,2 @@
+title:Crucifix
+pickup:true

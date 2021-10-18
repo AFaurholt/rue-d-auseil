@@ -2,9 +2,13 @@ nimcache/
 nimblecache/
 htmldocs/
 bin/
-assets/
+**/assets/audio/
+**/assets/icon.png
 
 *.a
 *.dll
 *.exe
 README-SDL.txt
+
+testresults/
+testresults.html
