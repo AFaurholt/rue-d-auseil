@@ -1,3 +1,4 @@
 title:Duvet
 selfDescription:duvet self
-pickup:false
+pickup:true
+object:duvet

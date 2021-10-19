@@ -11,6 +11,8 @@ type
     canPickup*: TableRef[string, bool]
     inventory*: TableRef[string, seq[string]]
     exits*: TableRef[string, seq[string]]
+    currentRoom*: string
+    objectWordToThing*: TableRef[string, string]
 
 const
   colorReplaceTuples* = [
@@ -31,6 +33,7 @@ const
     ,("<pink>", "<14>")
     ,("<peach>", "<15>")
   ]
+  playerCharacter* = "playerCharacter"
 
 func newGameData*(): GameData =
   result = GameData(
@@ -42,14 +45,22 @@ func newGameData*(): GameData =
     ,canPickup: newTable[string, bool]()
     ,inventory: newTable[string, seq[string]]()
     ,exits: newTable[string, seq[string]]()
+    ,objectWordToThing: newTable[string, string]()
   )
+  result.inventory[playerCharacter] = @[]
 
-proc addToInventory*(inv: var TableRef[string, seq[string]], key: string, val: string) =
-  if key in inv:
-    inv[key].add(val)
+proc addToSeqInTable*(table: var TableRef[string, seq[string]], key: string, val: string) =
+  if key in table:
+    table[key].add(val)
   else:
-    inv[key] = @[val]
+    table[key] = @[val]
 
+proc removeFromSeqInTable*(table: var TableRef[string, seq[string]], key, val: string) =
+  if key in table:
+    let idx = table[key].find(val)
+    if idx != -1:
+      table[key].del(idx)
+      
 proc readAllPath*(path: string): string =
   let file = open(path)
   result = file.readAll()
@@ -79,11 +90,15 @@ proc getGameDataFromDir*(path: string, data: var GameData) =
           data.canPickup[name] = pair[1].parseBool()
         of "inRoom":
           for room in pair[1].split(","):
-            data.inventory.addToInventory(room, name)
+            data.inventory.addToSeqInTable(room, name)
         of "exits":
           data.exits[name] = pair[1].split(",")
         of "startRoom":
           data.startRoom = name
+          data.currentRoom = name
+        of "object":
+          for word in pair[1].split(","):
+            data.objectWordToThing[word] = name
 
 proc getAllGameData*(): GameData =
   result = GameData(
@@ -95,7 +110,9 @@ proc getAllGameData*(): GameData =
     ,canPickup: newTable[string, bool]()
     ,inventory: newTable[string, seq[string]]()
     ,exits: newTable[string, seq[string]]()
+    ,objectWordToThing: newTable[string, string]()
   )
+  result.inventory[playerCharacter] = @[]
   
   getGameDataFromDir("assets/exits", result)
   getGameDataFromDir("assets/items", result)

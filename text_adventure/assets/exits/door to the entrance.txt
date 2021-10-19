@@ -1,3 +1,4 @@
 title:Entrance door
 leadsTo:hall
 roomDescription:missing
+object:entrance door,hall door,door to the entrance

@@ -1,2 +1,3 @@
 title:Crucifix
 pickup:true
+object:crucifix

@@ -1,3 +1,4 @@
 title:Bedroom door
 leadsTo:bedroom
 roomDescription:bedroom door room
+object:bedroom door,door to the bedroom
