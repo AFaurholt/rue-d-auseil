@@ -1,3 +1,5 @@
 title:Crucifix
 pickup:true
 object:crucifix
+roomDescription:crucifix room
+selfDescription:crucifix self

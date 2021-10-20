@@ -1,6 +1,15 @@
 import std/[os, tables, strutils]
 
 type
+  GameCommand* = object
+    tokens*: seq[string]
+  InventoryItemPair* = tuple[inv: string, item: string]
+  InteractionReq* = object
+    room*: string
+    inventoryHas*: seq[InventoryItemPair]
+    objectWord*: string
+    eventKey*: string
+    once*: bool
   GameData* = object
     startRoom*: string
     descriptions*: TableRef[string, string]
@@ -13,6 +22,8 @@ type
     exits*: TableRef[string, seq[string]]
     currentRoom*: string
     objectWordToThing*: TableRef[string, string]
+    interactionVerbs*: TableRef[string, seq[InteractionReq]]
+    interactionEvents*: TableRef[string, seq[GameCommand]]
 
 const
   colorReplaceTuples* = [
@@ -49,13 +60,13 @@ func newGameData*(): GameData =
   )
   result.inventory[playerCharacter] = @[]
 
-proc addToSeqInTable*(table: var TableRef[string, seq[string]], key: string, val: string) =
+proc addToSeqInTable*[TKey, TItem](table: var TableRef[TKey, seq[TItem]], key: TKey, val: TItem) =
   if key in table:
     table[key].add(val)
   else:
     table[key] = @[val]
 
-proc removeFromSeqInTable*(table: var TableRef[string, seq[string]], key, val: string) =
+proc removeFromSeqInTable*[TKey, TItem](table: var TableRef[TKey, seq[TItem]], key: TKey, val: TItem) =
   if key in table:
     let idx = table[key].find(val)
     if idx != -1:
@@ -100,6 +111,35 @@ proc getGameDataFromDir*(path: string, data: var GameData) =
           for word in pair[1].split(","):
             data.objectWordToThing[word] = name
 
+proc createGameCommand*(key: string, tokens: seq[string], gameData: var GameData) =
+  gameData.interactionEvents.addToSeqInTable(key, GameCommand(tokens: tokens))
+
+proc getAllInteractions*(path: string, gameData: var GameData) =
+  for item in walkFiles(path & "/*.txt"):
+    let name = item.splitFile().name
+    var requirements = InteractionReq(eventKey: name)
+    var verb: string
+    for line in readAllPath(item).splitLines:
+      let pair = line.split(":")
+      case pair[0]:
+        of "object":
+          requirements.objectWord = pair[1]
+        of "verb":
+          verb = pair[1]
+        of "room":
+          requirements.room = pair[1]
+        of "event":
+          for subPair in pair[1].split(";"):
+            createGameCommand(name, subPair.split("."), gameData)
+        of "once":
+          requirements.once = true
+        of "inventory":
+          for subPair in pair[1].split(";"):
+            let subSubPair = subPair.split(".")
+            requirements.inventoryHas.add((inv: subSubPair[0], item: subSubPair[1]))
+    #end of lines
+    gameData.interactionVerbs.addToSeqInTable(verb, requirements)
+
 proc getAllGameData*(): GameData =
   result = GameData(
     descriptions: getDescriptionsFromFiles("assets/descriptions")
@@ -111,9 +151,12 @@ proc getAllGameData*(): GameData =
     ,inventory: newTable[string, seq[string]]()
     ,exits: newTable[string, seq[string]]()
     ,objectWordToThing: newTable[string, string]()
+    ,interactionVerbs: newTable[string, seq[InteractionReq]]()
+    ,interactionEvents: newTable[string, seq[GameCommand]]()
   )
   result.inventory[playerCharacter] = @[]
   
   getGameDataFromDir("assets/exits", result)
   getGameDataFromDir("assets/items", result)
   getGameDataFromDir("assets/rooms", result)
+  getAllInteractions("assets/interactions", result)

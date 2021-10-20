@@ -37,17 +37,13 @@ proc getFullRoomDesc(gameData: GameData, room: string): string =
   result = desc
 
 proc parseInput(input: string, gameData: var GameData) =
+  echo "input: ", input
   var verb: string
   if parseIdent(input, verb, 0) != 0:
     case verb:
       of "debug":
-        echo "room inventory"
-        for item in gameData.getInv(gameData.currentRoom):
-          echo item
-        echo "--------"
-        for pair in gameData.canPickup.pairs:
-          echo pair
-        echo gameData.canPickup["bedstead"]
+        echo "game state:"
+        echo gameData
       of "enter":
         var temp = input.substr(verb.len).strip().toLower()
         if temp in gameData.objectWordToThing:
@@ -78,11 +74,38 @@ proc parseInput(input: string, gameData: var GameData) =
               gameData.inventory.removeFromSeqInTable(gameData.currentRoom, temp)
             else:
               displayText = "You can't pick that up."
-      of "invetory":
+      of "inventory":
         displayText = "In your <orange>inventory</> you find:"
         for thing in gameData.inventory[playerCharacter]:
           displayText &= "\n" & gameData.titles[thing]
 
+    #end of normal parse
+    if verb in gameData.interactionVerbs:
+      var toRemove: seq[InteractionReq] = @[]
+      for req in gameData.interactionVerbs[verb]:
+        var
+          objectWord = input.substr(verb.len).strip().toLower()
+          isCorrectRoom = req.room.isEmptyOrWhitespace() or gameData.currentRoom == req.room
+          isCorrectObject = req.objectWord.isEmptyOrWhitespace() or objectWord in gameData.objectWordToThing and gameData.objectWordToThing[objectWord] == req.objectWord
+          hasCorrectItems = true
+        if req.inventoryHas.len > 0:
+          for pair in req.inventoryHas:
+            if pair.inv notin gameData.inventory or pair.item notin gameData.inventory[pair.inv]:
+              hasCorrectItems = false
+        
+        if isCorrectRoom and isCorrectObject and hasCorrectItems:
+          for gameCommand in gameData.interactionEvents[req.eventKey]:
+            case gameCommand.tokens[0]:
+              of "item":
+                case gameCommand.tokens[1]:
+                  of "add":
+                    gameData.inventory.addToSeqInTable(gameCommand.tokens[3], gameCommand.tokens[2])
+
+          if req.once:
+            toRemove.add(req)
+      #after for
+      for req in toRemove:
+        gameData.interactionVerbs.removeFromSeqInTable(verb, req)
 
 proc gameInit() =
   loadFont(0, "fonts/compass-pro-v1.1.png")
@@ -135,9 +158,11 @@ proc gameUpdate(dt: float32) =
     let windowHeight = (screenHeight.float32 * getScreenScale()).int
     setTargetSize(windowWidth div scale, windowHeight div scale)
   if keyp(K_F3):
+    echo "F3 pressed"
     maxLines += 1
     currentLine = 0
   if keyp(K_F4):
+    echo "F3 pressed"
     currentLine = 0
     if maxLines > minLines: maxLines -= 1
 

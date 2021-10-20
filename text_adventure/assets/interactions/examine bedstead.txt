@@ -1,0 +1,6 @@
+object:bedstead
+verb:examine
+room:bedroom
+event:item.add.crucifix.bedroom
+inventory:bedroom.bedstead
+once
