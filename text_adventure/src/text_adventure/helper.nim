@@ -17,6 +17,7 @@ type
     leadsTo*: TableRef[string, string]
     selfDescriptions*: TableRef[string, string]
     roomDescriptions*: TableRef[string, string]
+    lockDescriptions*: TableRef[string, string]
     canPickup*: TableRef[string, bool]
     inventory*: TableRef[string, seq[string]]
     exits*: TableRef[string, seq[string]]
@@ -24,6 +25,8 @@ type
     objectWordToThing*: TableRef[string, string]
     interactionVerbs*: TableRef[string, seq[InteractionReq]]
     interactionEvents*: TableRef[string, seq[GameCommand]]
+    isLocked*: TableRef[string, bool]
+    needsKey*: TableRef[string, string]
 
 const
   colorReplaceTuples* = [
@@ -89,27 +92,33 @@ proc getGameDataFromDir*(path: string, data: var GameData) =
     for line in readAllPath(item).splitLines:
       let pair = line.split(":")
       case pair[0]:
-        of "title":
-          data.titles[name] = pair[1]
-        of "leadsTo":
-          data.leadsTo[name] = pair[1]
-        of "selfDescription":
-          data.selfDescriptions[name] = pair[1]
-        of "roomDescription":
-          data.roomDescriptions[name] = pair[1]
-        of "pickup":
-          data.canPickup[name] = pair[1].parseBool()
-        of "inRoom":
-          for room in pair[1].split(","):
-            data.inventory.addToSeqInTable(room, name)
-        of "exits":
-          data.exits[name] = pair[1].split(",")
-        of "startRoom":
-          data.startRoom = name
-          data.currentRoom = name
-        of "object":
-          for word in pair[1].split(","):
-            data.objectWordToThing[word] = name
+      of "needsKey":
+        data.needsKey[name] = pair[1]
+      of "isLocked":
+        data.isLocked[name] = pair[1].parseBool()
+      of "title":
+        data.titles[name] = pair[1]
+      of "leadsTo":
+        data.leadsTo[name] = pair[1]
+      of "selfDescription":
+        data.selfDescriptions[name] = pair[1]
+      of "roomDescription":
+        data.roomDescriptions[name] = pair[1]
+      of "lockDescription":
+        data.lockDescriptions[name] = pair[1]
+      of "pickup":
+        data.canPickup[name] = pair[1].parseBool()
+      of "inRoom":
+        for room in pair[1].split(","):
+          data.inventory.addToSeqInTable(room, name)
+      of "exits":
+        data.exits[name] = pair[1].split(",")
+      of "startRoom":
+        data.startRoom = name
+        data.currentRoom = name
+      of "object":
+        for word in pair[1].split(","):
+          data.objectWordToThing[word] = name
 
 proc createGameCommand*(key: string, tokens: seq[string], gameData: var GameData) =
   gameData.interactionEvents.addToSeqInTable(key, GameCommand(tokens: tokens))
@@ -147,12 +156,15 @@ proc getAllGameData*(): GameData =
     ,leadsTo: newTable[string, string]()
     ,selfDescriptions: newTable[string, string]()
     ,roomDescriptions: newTable[string, string]()
+    ,lockDescriptions: newTable[string, string]()
     ,canPickup: newTable[string, bool]()
     ,inventory: newTable[string, seq[string]]()
     ,exits: newTable[string, seq[string]]()
     ,objectWordToThing: newTable[string, string]()
     ,interactionVerbs: newTable[string, seq[InteractionReq]]()
     ,interactionEvents: newTable[string, seq[GameCommand]]()
+    ,isLocked: newTable[string, bool]()
+    ,needsKey: newTable[string, string]()
   )
   result.inventory[playerCharacter] = @[]
   

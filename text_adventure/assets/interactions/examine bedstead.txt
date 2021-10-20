@@ -1,6 +1,6 @@
 object:bedstead
 verb:examine
 room:bedroom
-event:item.add.crucifix.bedroom
+event:item.add.crucifix.bedroom;item.del.bedstead.bedroom
 inventory:bedroom.bedstead
 once

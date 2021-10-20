@@ -1,4 +1,5 @@
 title:Entrance door
 leadsTo:hall
-roomDescription:missing
+roomDescription:door to the entrance
 object:entrance door,hall door,door to the entrance
+isLocked:false

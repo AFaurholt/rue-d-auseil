@@ -1,0 +1,6 @@
+title:Key
+pickup:true
+object:key
+roomDescription:key room
+selfDescription:key self
+inRoom:hall

@@ -19,6 +19,8 @@ var showPointer = false
 
 var gameData = getAllGameData()
 
+func getLockDesc(gameData: GameData, key: string): string =
+  result = gameData.descriptions[gameData.lockDescriptions[key]]
 func getSelfDesc(gameData: GameData, key: string): string =
   result = gameData.descriptions[gameData.selfDescriptions[key]]
 func getRoomDesc(gameData: GameData, key: string): string =
@@ -41,43 +43,60 @@ proc parseInput(input: string, gameData: var GameData) =
   var verb: string
   if parseIdent(input, verb, 0) != 0:
     case verb:
-      of "debug":
-        echo "game state:"
-        echo gameData
-      of "enter":
-        var temp = input.substr(verb.len).strip().toLower()
-        if temp in gameData.objectWordToThing:
-          temp = gameData.objectWordToThing[temp]
-          if temp in gameData.exits[gameData.currentRoom]:
+    of "debug":
+      echo "game state:"
+      echo gameData
+    of "unlock":
+      var temp = input.substr(verb.len).strip().toLower()
+      if temp in gameData.objectWordToThing:
+        temp = gameData.objectWordToThing[temp]
+        if temp in gameData.exits[gameData.currentRoom]:
+          currentLine = 0
+          if not gameData.isLocked[temp]:
+            displayText = "It's already <orange>unlocked</>.".multiReplace(colorReplaceTuples)
+          elif gameData.needsKey[temp] in gameData.inventory[playerCharacter]:
+            displayText = "You <orange>unlock</> it.".multiReplace(colorReplaceTuples)
+            gameData.isLocked[temp] = false
+          else:
+            displayText = "You don't have the correct key."
+    of "enter":
+      var temp = input.substr(verb.len).strip().toLower()
+      if temp in gameData.objectWordToThing:
+        temp = gameData.objectWordToThing[temp]
+        if temp in gameData.exits[gameData.currentRoom]:
+          currentLine = 0
+          if not gameData.isLocked[temp]:
             gameData.currentRoom = gameData.leadsTo[temp]
             displayText = gameData.getFullRoomDesc(gameData.currentRoom)
-            currentLine = 0
-      of "examine":
-        var temp = input.substr(verb.len).strip().toLower()
-        if temp in gameData.objectWordToThing:
-          temp = gameData.objectWordToThing[temp]
-          if temp in gameData.inventory[gameData.currentRoom] or temp in gameData.inventory[playerCharacter]:
-            displayText = gameData.getSelfDesc(temp)
-            currentLine = 0
-      of "look", "back":
-        displayText = gameData.getFullRoomDesc(gameData.currentRoom)
-        currentLine = 0
-      of "take":
-        var temp = input.substr(verb.len).strip().toLower()
-        if temp in gameData.objectWordToThing:
-          temp = gameData.objectWordToThing[temp]
-          if temp in gameData.getInv(gameData.currentRoom):
-            currentLine = 0
-            if gameData.canPickup[temp]:
-              displayText = "You put it in your <orange>inventory</>.".multiReplace(colorReplaceTuples)
-              gameData.inventory.addToSeqInTable(playerCharacter, temp)
-              gameData.inventory.removeFromSeqInTable(gameData.currentRoom, temp)
-            else:
-              displayText = "You can't pick that up."
-      of "inventory":
-        displayText = "In your <orange>inventory</> you find:"
-        for thing in gameData.inventory[playerCharacter]:
-          displayText &= "\n" & gameData.titles[thing]
+          else:
+            displayText = gameData.getLockDesc(temp)
+    of "examine":
+      var temp = input.substr(verb.len).strip().toLower()
+      if temp in gameData.objectWordToThing:
+        temp = gameData.objectWordToThing[temp]
+        if temp in gameData.inventory[gameData.currentRoom] or temp in gameData.inventory[playerCharacter]:
+          displayText = gameData.getSelfDesc(temp)
+          currentLine = 0
+    of "look", "back":
+      displayText = gameData.getFullRoomDesc(gameData.currentRoom)
+      currentLine = 0
+    of "take":
+      var temp = input.substr(verb.len).strip().toLower()
+      if temp in gameData.objectWordToThing:
+        temp = gameData.objectWordToThing[temp]
+        if temp in gameData.getInv(gameData.currentRoom):
+          currentLine = 0
+          if gameData.canPickup[temp]:
+            displayText = "You put it in your <orange>inventory</>.".multiReplace(colorReplaceTuples)
+            gameData.inventory.addToSeqInTable(playerCharacter, temp)
+            gameData.inventory.removeFromSeqInTable(gameData.currentRoom, temp)
+          else:
+            displayText = "You can't pick that up."
+    of "inventory":
+      currentLine = 0
+      displayText = "In your <orange>inventory</> you find:"
+      for thing in gameData.inventory[playerCharacter]:
+        displayText &= "\n" & gameData.titles[thing]
 
     #end of normal parse
     if verb in gameData.interactionVerbs:
@@ -96,10 +115,18 @@ proc parseInput(input: string, gameData: var GameData) =
         if isCorrectRoom and isCorrectObject and hasCorrectItems:
           for gameCommand in gameData.interactionEvents[req.eventKey]:
             case gameCommand.tokens[0]:
-              of "item":
-                case gameCommand.tokens[1]:
-                  of "add":
-                    gameData.inventory.addToSeqInTable(gameCommand.tokens[3], gameCommand.tokens[2])
+            of "item":
+              case gameCommand.tokens[1]:
+              of "add":
+                gameData.inventory.addToSeqInTable(gameCommand.tokens[3], gameCommand.tokens[2])
+              of "rem", "remove", "del", "delete":
+                gameData.inventory.removeFromSeqInTable(gameCommand.tokens[3],gameCommand.tokens[2])
+            of "exit":
+              case gameCommand.tokens[1]:
+              of "add":
+                gameData.exits.addToSeqInTable(gameCommand.tokens[3], gameCommand.tokens[2])
+              of "rem", "remove", "del", "delete":
+                gameData.exits.removeFromSeqInTable(gameCommand.tokens[3], gameCommand.tokens[2])
 
           if req.once:
             toRemove.add(req)
