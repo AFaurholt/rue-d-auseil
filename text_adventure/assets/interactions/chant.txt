@@ -1,0 +1,5 @@
+verb:chant
+object:chant words
+hasExit:bedroom.portal to hell
+room:bedroom
+event:exit.del.portal to hell.bedroom;display.chanting

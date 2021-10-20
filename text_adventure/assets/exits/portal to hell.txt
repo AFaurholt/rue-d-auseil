@@ -1,0 +1,6 @@
+title:Portal to hell
+leadsTo:hall
+roomDescription:hell portal
+selfDescription:portal self
+object:portal, hell portal
+isLocked:false

@@ -74,12 +74,21 @@ proc parseInput(input: string, gameData: var GameData) =
       var temp = input.substr(verb.len).strip().toLower()
       if temp in gameData.objectWordToThing:
         temp = gameData.objectWordToThing[temp]
-        if temp in gameData.inventory[gameData.currentRoom] or temp in gameData.inventory[playerCharacter]:
+        if temp in gameData.inventory[gameData.currentRoom] or temp in gameData.inventory[playerCharacter] or temp in gameData.exits[gameData.currentRoom]:
           displayText = gameData.getSelfDesc(temp)
           currentLine = 0
     of "look", "back":
       displayText = gameData.getFullRoomDesc(gameData.currentRoom)
       currentLine = 0
+    of "drop":
+      var temp = input.substr(verb.len).strip().toLower()
+      if temp in gameData.objectWordToThing:
+        temp = gameData.objectWordToThing[temp]
+        if temp in gameData.inventory[playerCharacter]:
+          currentLine = 0
+          gameData.inventory.addToSeqInTable(gameData.currentRoom, temp)
+          gameData.inventory.removeFromSeqInTable(playerCharacter, temp)
+          displayText = "You <orange>drop</> the item.".multiReplace(colorReplaceTuples)
     of "take":
       var temp = input.substr(verb.len).strip().toLower()
       if temp in gameData.objectWordToThing:
@@ -107,14 +116,35 @@ proc parseInput(input: string, gameData: var GameData) =
           isCorrectRoom = req.room.isEmptyOrWhitespace() or gameData.currentRoom == req.room
           isCorrectObject = req.objectWord.isEmptyOrWhitespace() or objectWord in gameData.objectWordToThing and gameData.objectWordToThing[objectWord] == req.objectWord
           hasCorrectItems = true
+          hasCorrectExits = true
+
         if req.inventoryHas.len > 0:
           for pair in req.inventoryHas:
             if pair.inv notin gameData.inventory or pair.item notin gameData.inventory[pair.inv]:
               hasCorrectItems = false
         
-        if isCorrectRoom and isCorrectObject and hasCorrectItems:
+        
+        if req.hasExit.len > 0:
+          for pair in req.hasExit:
+            if pair.inv notin gameData.exits or pair.item notin gameData.exits[pair.inv]:
+              hasCorrectExits = false
+
+        if isCorrectRoom and isCorrectObject and hasCorrectItems and hasCorrectExits:
           for gameCommand in gameData.interactionEvents[req.eventKey]:
             case gameCommand.tokens[0]:
+            of "display":
+              currentLine = 0
+              displayText = gameData.descriptions[gameCommand.tokens[1]]
+            of "unlock":
+              gameData.isLocked[gameCommand.tokens[1]] = false
+            of "lock":
+              gameData.isLocked[gameCommand.tokens[1]] = true
+            of "pickup":
+              case gameCommand.tokens[1]:
+              of "add":
+                gameData.canPickup[gameCommand.tokens[2]] = true
+              of "rem", "remove", "del", "delete":
+                gameData.canPickup[gameCommand.tokens[2]] = false
             of "item":
               case gameCommand.tokens[1]:
               of "add":
@@ -127,6 +157,14 @@ proc parseInput(input: string, gameData: var GameData) =
                 gameData.exits.addToSeqInTable(gameCommand.tokens[3], gameCommand.tokens[2])
               of "rem", "remove", "del", "delete":
                 gameData.exits.removeFromSeqInTable(gameCommand.tokens[3], gameCommand.tokens[2])
+            of "desc", "description", "txt", "text":
+              case gameCommand.tokens[1]:
+              of "self":
+                gameData.selfDescriptions[gameCommand.tokens[2]] = gameCommand.tokens[3]
+              of "room":
+                gameData.roomDescriptions[gameCommand.tokens[2]] = gameCommand.tokens[3]
+              of "lock":
+                gameData.lockDescriptions[gameCommand.tokens[2]] = gameCommand.tokens[3]
 
           if req.once:
             toRemove.add(req)

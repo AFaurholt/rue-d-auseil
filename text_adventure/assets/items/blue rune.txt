@@ -1,0 +1,6 @@
+title:Blue rune
+selfDescription:rune
+roomDescription:rune
+pickup:true
+inRoom:playerCharacter
+object:blue rune

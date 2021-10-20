@@ -1,3 +1,4 @@
 title:Zann's bedroom
 selfDescription:bedroom
 exits:door to the entrance
+startRoom

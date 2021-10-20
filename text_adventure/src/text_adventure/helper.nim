@@ -10,6 +10,7 @@ type
     objectWord*: string
     eventKey*: string
     once*: bool
+    hasExit*: seq[InventoryItemPair]
   GameData* = object
     startRoom*: string
     descriptions*: TableRef[string, string]
@@ -142,6 +143,10 @@ proc getAllInteractions*(path: string, gameData: var GameData) =
             createGameCommand(name, subPair.split("."), gameData)
         of "once":
           requirements.once = true
+        of "hasExit":
+          for subPair in pair[1].split(";"):
+            let subSubPair = subPair.split(".")
+            requirements.hasExit.add((inv: subSubPair[0], item: subSubPair[1]))
         of "inventory":
           for subPair in pair[1].split(";"):
             let subSubPair = subPair.split(".")

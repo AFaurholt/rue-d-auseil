@@ -1,4 +1,3 @@
 title:Hall
 selfDescription:missing
 exits:door to the bedroom
-startRoom
