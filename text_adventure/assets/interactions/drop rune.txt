@@ -1,5 +1,5 @@
 verb:drop
 room:bedroom
-inventory:bedroom.blue rune;bedroom.red rune
-event:pickup.del.blue rune.bedroom;pickup.del.red rune.bedroom;exit.add.portal to hell.bedroom;display.rune summon portal
+inventory:bedroom/blue rune;bedroom/red rune
+event:pickup/del/blue rune/bedroom;pickup/del/red rune/bedroom;exit/add/portal to hell/bedroom;display/rune summon portal
 once

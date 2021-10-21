@@ -1,6 +1,6 @@
 title:Bedroom door
 leadsTo:bedroom
-roomDescription:bedroom door room
+roomDescription:                           bedroom door room
 object:bedroom door,door to the bedroom,bedroom
 isLocked:true
 lockDescription:door to the bedroom lock

@@ -41,7 +41,7 @@ proc getFullRoomDesc(gameData: GameData, room: string): string =
 proc parseInput(input: string, gameData: var GameData) =
   echo "input: ", input
   var verb: string
-  if parseIdent(input, verb, 0) != 0:
+  if parseIdent(input.strip(), verb, 0) != 0:
     case verb:
     of "debug":
       echo "game state:"
@@ -123,7 +123,6 @@ proc parseInput(input: string, gameData: var GameData) =
             if pair.inv notin gameData.inventory or pair.item notin gameData.inventory[pair.inv]:
               hasCorrectItems = false
         
-        
         if req.hasExit.len > 0:
           for pair in req.hasExit:
             if pair.inv notin gameData.exits or pair.item notin gameData.exits[pair.inv]:
@@ -182,6 +181,7 @@ proc gameInit() =
   )
   displayText = getFullRoomDesc(gameData, gameData.currentRoom)
 
+
 proc gameUpdate(dt: float32) =
   frame.inc()
   if frame mod 5 == 0:
@@ -191,10 +191,12 @@ proc gameUpdate(dt: float32) =
       showPointer = not showPointer
 
   if keyp(K_RETURN):
+
     if isTyping:
       stopTextInput()
       isTyping = false
       parseInput(textInputString, gameData)
+      showPointer = false
     else:
       isTyping = true
       #clear when sending, but for debug clear when new
@@ -233,6 +235,7 @@ proc gameUpdate(dt: float32) =
 
 proc gameDraw() =
   #do this only once later
+  #displayText = "0: " & $musicGetPos(0) & "\n1: " & $musicGetPos(1)
   let wrappedLines = richWrapLines(displayText, screenWidth - 12)
   totalLines = wrappedLines.len
   let ratioVisible:float = float(maxLines) / float(totalLines)
@@ -261,12 +264,12 @@ proc gameDraw() =
     richPrint(line, 6, 6 + fontHeight() * idx)
   setColor(7)
   let offsetInput =
-    if screenWidth < (">" & textInputString).richPrintWidthOneLine + 4:
-      (">" & textInputString).richPrintWidthOneLine - (screenWidth - 4)
+    if screenWidth < (">" & textInputString).richPrintWidthOneLine + screenWidth * 0.1f:
+      (">" & textInputString).richPrintWidthOneLine - (screenWidth * 0.9f)
     else:
       0
   let txtPointer = if showPointer: "|" else: ""
-  richPrint(">" & textInputString & txtPointer, 1 - offsetInput, screenHeight - fontHeight() - 2)
+  richPrint(">" & textInputString & txtPointer, int(1 - offsetInput), screenHeight - fontHeight() - 2)
 
 # initialization
 nico.init("nico", "test")

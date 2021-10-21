@@ -2,8 +2,11 @@ nimcache/
 nimblecache/
 htmldocs/
 bin/
+**/assets/music/
+**/assets/sounds/
 **/assets/audio/
 **/assets/icon.png
+**/tmp/
 
 *.a
 *.dll

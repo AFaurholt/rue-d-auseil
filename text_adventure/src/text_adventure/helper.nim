@@ -91,35 +91,36 @@ proc getGameDataFromDir*(path: string, data: var GameData) =
   for item in walkFiles(path & "/*.txt"):
     let name = item.splitFile().name
     for line in readAllPath(item).splitLines:
-      let pair = line.split(":")
+      let pair = line.strip().split(":")
       case pair[0]:
       of "needsKey":
-        data.needsKey[name] = pair[1]
+        data.needsKey[name] = pair[1].strip()
       of "isLocked":
-        data.isLocked[name] = pair[1].parseBool()
+        data.isLocked[name] = pair[1].strip().parseBool()
       of "title":
-        data.titles[name] = pair[1]
+        data.titles[name] = pair[1].strip()
       of "leadsTo":
-        data.leadsTo[name] = pair[1]
+        data.leadsTo[name] = pair[1].strip()
       of "selfDescription":
-        data.selfDescriptions[name] = pair[1]
+        data.selfDescriptions[name] = pair[1].strip()
       of "roomDescription":
-        data.roomDescriptions[name] = pair[1]
+        data.roomDescriptions[name] = pair[1].strip()
       of "lockDescription":
-        data.lockDescriptions[name] = pair[1]
+        data.lockDescriptions[name] = pair[1].strip()
       of "pickup":
-        data.canPickup[name] = pair[1].parseBool()
+        data.canPickup[name] = pair[1].strip().parseBool()
       of "inRoom":
         for room in pair[1].split(","):
-          data.inventory.addToSeqInTable(room, name)
+          data.inventory.addToSeqInTable(room.strip(), name)
       of "exits":
-        data.exits[name] = pair[1].split(",")
+          for exit in pair[1].split(","):
+            data.exits.addToSeqInTable(name, exit.strip())
       of "startRoom":
         data.startRoom = name
         data.currentRoom = name
       of "object":
         for word in pair[1].split(","):
-          data.objectWordToThing[word] = name
+          data.objectWordToThing[word.strip()] = name
 
 proc createGameCommand*(key: string, tokens: seq[string], gameData: var GameData) =
   gameData.interactionEvents.addToSeqInTable(key, GameCommand(tokens: tokens))
@@ -130,27 +131,27 @@ proc getAllInteractions*(path: string, gameData: var GameData) =
     var requirements = InteractionReq(eventKey: name)
     var verb: string
     for line in readAllPath(item).splitLines:
-      let pair = line.split(":")
+      let pair = line.strip().split(":")
       case pair[0]:
         of "object":
-          requirements.objectWord = pair[1]
+          requirements.objectWord = pair[1].strip()
         of "verb":
-          verb = pair[1]
+          verb = pair[1].strip()
         of "room":
-          requirements.room = pair[1]
+          requirements.room = pair[1].strip()
         of "event":
           for subPair in pair[1].split(";"):
-            createGameCommand(name, subPair.split("."), gameData)
+            createGameCommand(name, subPair.strip().split("/"), gameData)
         of "once":
           requirements.once = true
         of "hasExit":
           for subPair in pair[1].split(";"):
-            let subSubPair = subPair.split(".")
-            requirements.hasExit.add((inv: subSubPair[0], item: subSubPair[1]))
+            let subSubPair = subPair.split("/")
+            requirements.hasExit.add((inv: subSubPair[0].strip(), item: subSubPair[1].strip()))
         of "inventory":
           for subPair in pair[1].split(";"):
-            let subSubPair = subPair.split(".")
-            requirements.inventoryHas.add((inv: subSubPair[0], item: subSubPair[1]))
+            let subSubPair = subPair.split("/")
+            requirements.inventoryHas.add((inv: subSubPair[0].strip(), item: subSubPair[1].strip()))
     #end of lines
     gameData.interactionVerbs.addToSeqInTable(verb, requirements)
 

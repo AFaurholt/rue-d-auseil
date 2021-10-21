@@ -1,6 +1,6 @@
 object:bedstead
 verb:examine
 room:bedroom
-event:item.add.crucifix.bedroom;item.del.bedstead.bedroom;desc.self.bedroom.key self;lock.door to the bedroom;display.crucifix self
-inventory:bedroom.bedstead
+event:item/add/crucifix/bedroom;item/del/bedstead/bedroom;desc/self/bedroom/key self;lock/door to the bedroom;display/crucifix self
+inventory:bedroom/bedstead
 once
