@@ -186,11 +186,20 @@ proc parseInput(input: string, gameData: var GameData) =
                 gameData.audioSync.del(syncChild)
               of "play":
                 #TODO error and stuff
-                echo $gameData.audioChannel
-                if gameData.availableChannels.len > 0:
+                let name = gameCommand.tokens[2]
+                if name in gameData.audioChannel:
+                  let
+                    isLoop = gameCommand.tokens.len == 4 and gameCommand.tokens[3] == "loop"
+                    isSync = name in gameData.audioSync
+                    channel = gameData.audioChannel[name]
+                    audioIdx = gameData.audioIndex.find(name)
+                  music(channel, audioIdx, if isLoop: -1 else: 0)
+                  if isSync:
+                    let syncPos = musicGetPos(syncToChannel(gameData, name))
+                    musicSeek(channel, syncPos)
+                elif gameData.availableChannels.len > 0:
                   let
                     idxChannel = gameData.availableChannels.pop()
-                    name = gameCommand.tokens[2]
                     idxAudio = gameData.audioIndex.find(name)
                     isMusic = gameData.isMusic[name]
                     isSync = name in gameData.audioSync
@@ -204,7 +213,6 @@ proc parseInput(input: string, gameData: var GameData) =
                     musicSeek(idxChannel, syncPos)
                   if not isSync and isMusic:
                     music(idxChannel, idxAudio, if isLoop: -1 else: 0)
-                echo $gameData.audioChannel
             of "display":
               currentLine = 0
               displayText = gameData.descriptions[gameCommand.tokens[1]]
@@ -270,11 +278,6 @@ proc gameUpdate(dt: float32) =
         else:
           newFadeOutQueue.add((fadeOut.targetTime, newRunTime, fadeOut.name))
           lerp(float volume, 0'f, newRunTime.normalize(0, fadeOut.targetTime))
-    echo "runtime: ", newRunTime
-    echo "runtime normalized: ", newRunTime.normalize(0, fadeOut.targetTime)
-    echo "newVolume: ", newVolume
-    echo "volume: ", volume
-    echo "channel: ", channel
 
     volume(channel, int newVolume)
   for fadeIn in gameData.fadeInQueue:
@@ -344,10 +347,6 @@ proc gameUpdate(dt: float32) =
 
 proc gameDraw() =
   #do this only once later
-  if musicGetPos(15) > sampleCount1 : sampleCount1 = musicGetPos(15)
-  if musicGetPos(14) > sampleCount2 : sampleCount2 = musicGetPos(14)
-  displayText = "15: " & $sampleCount1 & "\n14: " & $sampleCount2
-
   let wrappedLines = richWrapLines(displayText, screenWidth - 12)
   totalLines = wrappedLines.len
   let ratioVisible:float = float(maxLines) / float(totalLines)
