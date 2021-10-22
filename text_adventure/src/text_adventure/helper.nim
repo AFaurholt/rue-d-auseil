@@ -1,9 +1,11 @@
 import std/[os, tables, strutils]
+import nico
 
 type
   GameCommand* = object
     tokens*: seq[string]
   InventoryItemPair* = tuple[inv: string, item: string]
+  AudioFadeInfo* = tuple[targetTime, runTime: float32, name: string]
   InteractionReq* = object
     room*: string
     inventoryHas*: seq[InventoryItemPair]
@@ -28,6 +30,14 @@ type
     interactionEvents*: TableRef[string, seq[GameCommand]]
     isLocked*: TableRef[string, bool]
     needsKey*: TableRef[string, string]
+    audioIndex*: seq[string]
+    audioSync*: TableRef[string, string]
+    audioChannel*: TableRef[string, int]
+    availableChannels*: seq[int]
+    isMusic*: TableRef[string, bool]
+    audioLevels*: TableRef[string, float32]
+    fadeOutQueue*: seq[AudioFadeInfo]
+    fadeInQueue*: seq[AudioFadeInfo]
 
 const
   colorReplaceTuples* = [
@@ -80,6 +90,23 @@ proc readAllPath*(path: string): string =
   let file = open(path)
   result = file.readAll()
   close(file)
+
+proc loadAllAudio*(gameData: var GameData, path: string, isMusic = true) =
+  if dirExists(path):
+    if isMusic:
+      for item in walkFiles(path & "/*.ogg"):
+        let name = splitFile(item).name
+        loadMusic(gameData.audioIndex.len, item)
+        gameData.audioIndex.add(name)
+        gameData.isMusic[name] = isMusic
+        gameData.audioLevels[name] = float32 255
+    #not music
+    else:
+      #TODO
+      for item in walkFiles(path & "/*.ogg"):
+        loadSfx(gameData.audioIndex.len, item)
+        gameData.audioIndex.add(splitFile(item).name)
+        gameData.isMusic[splitFile(item).name] = isMusic
 
 proc getDescriptionsFromFiles*(path: string): TableRef[string ,string] =
   result = newTable[string, string]()
@@ -171,10 +198,18 @@ proc getAllGameData*(): GameData =
     ,interactionEvents: newTable[string, seq[GameCommand]]()
     ,isLocked: newTable[string, bool]()
     ,needsKey: newTable[string, string]()
+    ,audioSync: newTable[string, string]()
+    ,audioChannel: newTable[string, int]()
+    ,availableChannels: @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+    ,isMusic: newTable[string, bool]()
+    ,audioLevels: newTable[string, float32]()
   )
   result.inventory[playerCharacter] = @[]
+
+  assetPath = basePath
   
   getGameDataFromDir("assets/exits", result)
   getGameDataFromDir("assets/items", result)
   getGameDataFromDir("assets/rooms", result)
   getAllInteractions("assets/interactions", result)
+  result.loadAllAudio("assets/music")

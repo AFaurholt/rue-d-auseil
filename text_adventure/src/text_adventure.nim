@@ -16,8 +16,10 @@ var totalLines = 0
 var isTyping = false
 var displayText = ""
 var showPointer = false
+var sampleCount1 = 0
+var sampleCount2 = 0
 
-var gameData = getAllGameData()
+var gameData: GameData
 
 func getLockDesc(gameData: GameData, key: string): string =
   result = gameData.descriptions[gameData.lockDescriptions[key]]
@@ -28,6 +30,11 @@ func getRoomDesc(gameData: GameData, key: string): string =
 func getInv(gameData: GameData, key: string): seq[string] =
   if key in gameData.inventory:
     result = gameData.inventory[key]
+func syncToChannel(gameData: GameData, name: string): int =
+  result = gameData.audioChannel[gameData.audioSync[name]]
+func normalize(num, min, max: float): float =
+  #(x – x minimum) / (x maximum – x minimum)
+  result = (num - min) / (max - min)
 
 proc getFullRoomDesc(gameData: GameData, room: string): string =
   var desc = gameData.getSelfDesc(room)
@@ -39,6 +46,7 @@ proc getFullRoomDesc(gameData: GameData, room: string): string =
   result = desc
 
 proc parseInput(input: string, gameData: var GameData) =
+  ## Parses player input and does too much
   echo "input: ", input
   var verb: string
   if parseIdent(input.strip(), verb, 0) != 0:
@@ -131,6 +139,72 @@ proc parseInput(input: string, gameData: var GameData) =
         if isCorrectRoom and isCorrectObject and hasCorrectItems and hasCorrectExits:
           for gameCommand in gameData.interactionEvents[req.eventKey]:
             case gameCommand.tokens[0]:
+            of "audio":
+              case gameCommand.tokens[1]:
+              of "clear":
+                let
+                  name = gameCommand.tokens[2]
+                  channel = gameData.audioChannel[name]
+                  isMusic = gameData.isMusic[name]
+
+                #make the channel available
+                gameData.availableChannels.add(channel)
+                gameData.audioChannel.del(name)
+                gameData.audioSync.del(name)
+                if isMusic:
+                  music(channel, -1)
+              of "volume":
+                let
+                  name = gameCommand.tokens[2]
+                  amount = gameCommand.tokens[3].parseInt()
+                gameData.audioLevels[name] = float amount
+                if name in gameData.audioChannel:
+                  let channelIdx = gameData.audioChannel[name]
+                  volume(channelIdx, amount)
+              of "mute":
+                let
+                  name = gameCommand.tokens[2]
+                  channel = gameData.audioChannel[name]
+                volume(channel, 0)
+              of "unmute":
+                let
+                  name = gameCommand.tokens[2]
+                  channelIdx = gameData.audioChannel[name]
+                volume(channelIdx, int gameData.audioLevels[name])
+              of "fadeOut":
+                gameData.fadeOutQueue.add((float32 gameCommand.tokens[3].parseFloat(), float32 0, gameCommand.tokens[2]))
+              of "fadeIn":
+                gameData.fadeInQueue.add((float32 gameCommand.tokens[3].parseFloat(), float32 0, gameCommand.tokens[2]))
+              of "sync":
+                let
+                  syncParent = gameCommand.tokens[4]
+                  syncChild = gameCommand.tokens[2]
+                gameData.audioSync[syncChild] = syncParent
+              of "desync":
+                let
+                  syncChild = gameCommand.tokens[2]
+                gameData.audioSync.del(syncChild)
+              of "play":
+                #TODO error and stuff
+                echo $gameData.audioChannel
+                if gameData.availableChannels.len > 0:
+                  let
+                    idxChannel = gameData.availableChannels.pop()
+                    name = gameCommand.tokens[2]
+                    idxAudio = gameData.audioIndex.find(name)
+                    isMusic = gameData.isMusic[name]
+                    isSync = name in gameData.audioSync
+                    isLoop = gameCommand.tokens.len == 4 and gameCommand.tokens[3] == "loop"
+
+                  gameData.audioChannel[name] = idxChannel
+
+                  if isSync and isMusic:
+                    music(idxChannel, idxAudio, if isLoop: -1 else: 0)
+                    let syncPos = musicGetPos(syncToChannel(gameData, name))
+                    musicSeek(idxChannel, syncPos)
+                  if not isSync and isMusic:
+                    music(idxChannel, idxAudio, if isLoop: -1 else: 0)
+                echo $gameData.audioChannel
             of "display":
               currentLine = 0
               displayText = gameData.descriptions[gameCommand.tokens[1]]
@@ -172,7 +246,7 @@ proc parseInput(input: string, gameData: var GameData) =
         gameData.interactionVerbs.removeFromSeqInTable(verb, req)
 
 proc gameInit() =
-  loadFont(0, "fonts/compass-pro-v1.1.png")
+  loadFont(0, "assets/fonts/compass-pro-v1.1.png")
   setFont(0)
   textInputString = ""
   textInputEventListener = addEventListener(proc(ev: Event): bool =
@@ -181,8 +255,44 @@ proc gameInit() =
   )
   displayText = getFullRoomDesc(gameData, gameData.currentRoom)
 
-
 proc gameUpdate(dt: float32) =
+  var
+    newFadeOutQueue: seq[AudioFadeInfo]
+    newFadeInQueue: seq[AudioFadeInfo]
+  for fadeOut in gameData.fadeOutQueue:
+    let
+      newRunTime = fadeOut.runTime + dt
+      volume = gameData.audioLevels[fadeOut.name]
+      channel = gameData.audioChannel[fadeOut.name]
+      newVolume: float32 =
+        if newRunTime >= fadeOut.targetTime:
+          float32 0
+        else:
+          newFadeOutQueue.add((fadeOut.targetTime, newRunTime, fadeOut.name))
+          lerp(float volume, 0'f, newRunTime.normalize(0, fadeOut.targetTime))
+    echo "runtime: ", newRunTime
+    echo "runtime normalized: ", newRunTime.normalize(0, fadeOut.targetTime)
+    echo "newVolume: ", newVolume
+    echo "volume: ", volume
+    echo "channel: ", channel
+
+    volume(channel, int newVolume)
+  for fadeIn in gameData.fadeInQueue:
+    let
+      newRunTime = fadeIn.runTime + dt
+      volume = gameData.audioLevels[fadeIn.name]
+      channel = gameData.audioChannel[fadeIn.name]
+      newVolume: float32 =
+        if newRunTime >= fadeIn.targetTime:
+          volume
+        else:
+          newFadeInQueue.add((fadeIn.targetTime, newRunTime, fadeIn.name))
+          lerp(0'f, float volume, newRunTime.normalize(0, fadeIn.targetTime))
+    volume(channel,int  newVolume)
+  
+  gameData.fadeOutQueue = newFadeOutQueue
+  gameData.fadeInQueue = newFadeInQueue
+
   frame.inc()
   if frame mod 5 == 0:
     step += 1
@@ -191,7 +301,6 @@ proc gameUpdate(dt: float32) =
       showPointer = not showPointer
 
   if keyp(K_RETURN):
-
     if isTyping:
       stopTextInput()
       isTyping = false
@@ -235,7 +344,10 @@ proc gameUpdate(dt: float32) =
 
 proc gameDraw() =
   #do this only once later
-  #displayText = "0: " & $musicGetPos(0) & "\n1: " & $musicGetPos(1)
+  if musicGetPos(15) > sampleCount1 : sampleCount1 = musicGetPos(15)
+  if musicGetPos(14) > sampleCount2 : sampleCount2 = musicGetPos(14)
+  displayText = "15: " & $sampleCount1 & "\n14: " & $sampleCount2
+
   let wrappedLines = richWrapLines(displayText, screenWidth - 12)
   totalLines = wrappedLines.len
   let ratioVisible:float = float(maxLines) / float(totalLines)
@@ -273,6 +385,8 @@ proc gameDraw() =
 
 # initialization
 nico.init("nico", "test")
+
+gameData = getAllGameData()
 
 # we want a dynamic sized screen with perfect square pixels
 fixedSize(false)
