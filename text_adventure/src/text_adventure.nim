@@ -8,7 +8,8 @@ var textInputString: string
 var textInputEventListener: EventListener
 var step = 0
 var frame: uint = 0
-var scale = 4
+var scale = 2
+var maxScale = 4
 var minLines = 3
 var maxLines = 3
 var currentLine = 0
@@ -16,10 +17,47 @@ var totalLines = 0
 var isTyping = false
 var displayText = ""
 var showPointer = false
-var sampleCount1 = 0
-var sampleCount2 = 0
+var em = 8'f
 
 var gameData: GameData
+
+proc getScreenPadding: float =
+  result = (em) / getScreenScale()
+
+proc getTitleHeight(): float =
+  let innerPadding = getScreenPadding() * 2
+  result = float(fontHeight()) + innerPadding
+
+proc getTitleHeightTotal(): float =
+  let outerPadding = getScreenPadding() * 2
+  result = getTitleHeight() + outerPadding
+
+proc getAvailableRenderHeight(): float =
+  let titleBoxAndPadding = getTitleHeightTotal()
+  let inputAreaAndPadding = getTitleHeightTotal()
+  result = float(screenHeight) - titleBoxAndPadding - inputAreaAndPadding
+
+proc getAvailableRenderWidth(): float =
+  let outerPadding = getScreenPadding() * 2
+  result = (float(screenWidth) - outerPadding)
+
+proc getTextBoxHeight(scale: float): float =
+  let paddingBetweenBoxes = getScreenPadding()
+  result = (getAvailableRenderHeight()) * scale - paddingBetweenBoxes
+
+proc getTextBoxHeightAdjusted(scale: float): float =
+  let innerPadding = getScreenPadding() * 2
+  result = getTextBoxHeight(scale) + innerPadding
+
+proc getSubTextBoxHeight(scale: float): float =
+  result = (getAvailableRenderHeight()) - getTextBoxHeightAdjusted(scale) - getScreenPadding()
+
+proc getTextBoxHeightOffset(): float =
+  result = getTitleHeightTotal()
+
+proc getSubTextBoxHeightOffset(scale: float): float =
+  let paddingBetweenBoxes = getScreenPadding()
+  result = getTextBoxHeightOffset() + getTextBoxHeightAdjusted(scale) + paddingBetweenBoxes
 
 func getLockDesc(gameData: GameData, key: string): string =
   result = gameData.descriptions[gameData.lockDescriptions[key]]
@@ -262,6 +300,9 @@ proc gameInit() =
       textInputString &= ev.text
   )
   displayText = getFullRoomDesc(gameData, gameData.currentRoom)
+  let windowWidth = (screenWidth.float32 * getScreenScale()).int
+  let windowHeight = (screenHeight.float32 * getScreenScale()).int
+  setTargetSize(windowWidth div scale, windowHeight div scale)
 
 proc gameUpdate(dt: float32) =
   var
@@ -330,12 +371,13 @@ proc gameUpdate(dt: float32) =
       let windowHeight = (screenHeight.float32 * getScreenScale()).int
       setTargetSize(windowWidth div scale, windowHeight div scale)
   if keyp(K_F2):
-    # increase text size
-    currentLine = 0
-    scale += 1
-    let windowWidth = (screenWidth.float32 * getScreenScale()).int
-    let windowHeight = (screenHeight.float32 * getScreenScale()).int
-    setTargetSize(windowWidth div scale, windowHeight div scale)
+    if scale < maxScale:
+      # increase text size
+      currentLine = 0
+      scale += 1
+      let windowWidth = (screenWidth.float32 * getScreenScale()).int
+      let windowHeight = (screenHeight.float32 * getScreenScale()).int
+      setTargetSize(windowWidth div scale, windowHeight div scale)
   if keyp(K_F3):
     echo "F3 pressed"
     maxLines += 1
@@ -345,13 +387,14 @@ proc gameUpdate(dt: float32) =
     currentLine = 0
     if maxLines > minLines: maxLines -= 1
 
-proc gameDraw() =
+proc oldDraw() =
   #do this only once later
   let wrappedLines = richWrapLines(displayText, screenWidth - 12)
   totalLines = wrappedLines.len
   let ratioVisible:float = float(maxLines) / float(totalLines)
   let visibleHeight:float = float(fontHeight()) * float(maxLines) + 4
   let scrollbarHeight:float = ratioVisible * visibleHeight
+  displayText = $(screenHeight / fontHeight()) & " " & $(glyphWidth('m', 2))
   cls()
   #textbox
   setColor(7)
@@ -381,6 +424,30 @@ proc gameDraw() =
       0
   let txtPointer = if showPointer: "|" else: ""
   richPrint(">" & textInputString & txtPointer, int(1 - offsetInput), screenHeight - fontHeight() - 2)
+
+proc drawTitle =
+  setColor(5)
+  boxfill(getScreenPadding(), getScreenPadding(), getAvailableRenderWidth(), getTitleHeight())
+
+proc drawTextBox =
+  setColor(7)
+  boxfill(getScreenPadding(), getTextBoxHeightOffset(), getAvailableRenderWidth(), getTextBoxHeightAdjusted(0.5))
+
+proc drawSubTextBox =
+  setColor(6)
+  boxfill(getScreenPadding(), getSubTextBoxHeightOffset(0.5), getAvailableRenderWidth(), getSubTextBoxHeight(0.5))
+
+proc drawInputArea =
+  setColor(5)
+  boxfill(getScreenPadding(), float(screenHeight) - getTitleHeight() - getScreenPadding(), getAvailableRenderWidth(), getTitleHeight())
+
+proc gameDraw() =
+  drawTitle()
+  drawTextBox()
+  drawSubTextBox()
+  drawInputArea()
+  setColor(8)
+  richPrint($getScreenScale() & "\n" & $getTitleHeight() & "\n"  & $getTitleHeightTotal() & "\n" & $getTextBoxHeightOffset() & "\n" & $fontHeight() & "\n" & $getScreenPadding() & "\n" & $getAvailableRenderHeight(),0,0)
 
 # initialization
 nico.init("nico", "test")
