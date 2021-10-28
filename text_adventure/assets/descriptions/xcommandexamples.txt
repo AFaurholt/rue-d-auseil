@@ -1,0 +1,38 @@
+room
+
+title:The living room
+location:0,0,0 // vector3 0,0,0
+selfDescription:front hall // refers to a file in "description" folder
+exits:exit1,door to the entrance //refers to files in "exits" folder
+
+item
+
+title:Whiskey bottle
+selfDescription:whiskey bottle
+roomDescription:whiskey room
+pickup:true
+inRoom:room name
+
+interaction
+
+room:ceremony room // none, one or many is in one of these rooms
+itemInv:ritual knife //none, one or two is in players inventory
+verb:speak //verb command
+object:cthulhu phtgan //objects of the verb command
+music:flight of the valkyries //none or one
+isBgm:false
+sound:oof //none or one
+destroy:whiskey bottle,rag //none or many
+newRoom:name of room,another room
+newItem:name of item,room;another item,another room
+switchDescription:old,new;another old,another new
+
+
+
+title:bedroom
+location:0,0,0
+selfDescription:bedroom
+exits:door to the entrance,window to other part of town
+
+title:bedroom description
+text:Zann's bedroom is spare and dusty. There is a rusty bedstead, formerly grandiose, covered by a somewhat threadbare duvet which barely disguises the bed's sagging springs. A dressing table standing under a dark mirror holds a leather violin case which adds a faint warm scent to a room which otherwise smells like dry forgetfulness. A wardrobe leans slightly ajar in the far corner, and the edge of a formal black dress cloak protrudes. A cracked wooden lecturn stands next to the wardrobe with a stack of pages on it, covered in spidery lines and crawling with notes which seem to vie for space on the nearly transparent manuscripts. On the wall hangs an oddly ornate work of wrought metal in a burnished dark grey. Its stays and gagues weave through a complex network of dials and coils in an almost menacing fashion. It is reminiscent of an astrolabe but 

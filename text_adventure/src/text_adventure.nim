@@ -4,25 +4,30 @@ import nico
 import nico/utils
 import text_adventure/helper
 
-var textInputString: string
-var textInputEventListener: EventListener
-var step = 0
-var frame: uint = 0
-var scale = 2
-var maxScale = 4
-var minLines = 3
-var maxLines = 3
-var currentLine = 0
-var totalLines = 0
-var isTyping = false
-var displayText = ""
-var showPointer = false
-var em = 8'f
-
-var gameData: GameData
+var
+  textInputString: string
+  textInputEventListener: EventListener
+  step = 0
+  frame: uint = 0
+  scale = 2
+  maxScale = 4
+  scroll = 0
+  isTyping = false
+  textBoxMaxLines = 0
+  textBoxText = ""
+  textBoxLines: seq[string] = @["test"]
+  textBoxLinesRender: seq[string]
+  displayTitle = "test"
+  lastScreenDimensions: array[2, int]
+  showPointer = false
+  em = 8'f
+  gameData: GameData
 
 proc getScreenPadding: float =
   result = (em) / getScreenScale()
+
+proc getScrollBarWidth: float =
+  result = getScreenPadding() * 4
 
 proc getTitleHeight(): float =
   let innerPadding = getScreenPadding() * 2
@@ -32,32 +37,43 @@ proc getTitleHeightTotal(): float =
   let outerPadding = getScreenPadding() * 2
   result = getTitleHeight() + outerPadding
 
+proc getSubTextBoxHeightTotal(): float =
+  let padding = getScreenPadding() * 4
+  result = float(fontHeight()) * 3 + padding
+
 proc getAvailableRenderHeight(): float =
   let titleBoxAndPadding = getTitleHeightTotal()
   let inputAreaAndPadding = getTitleHeightTotal()
-  result = float(screenHeight) - titleBoxAndPadding - inputAreaAndPadding
+  let subtextHeightAndPadding = getSubTextBoxHeightTotal()
+  result = float(screenHeight) - titleBoxAndPadding - inputAreaAndPadding - subtextHeightAndPadding + getScreenPadding()
 
 proc getAvailableRenderWidth(): float =
   let outerPadding = getScreenPadding() * 2
   result = (float(screenWidth) - outerPadding)
 
-proc getTextBoxHeight(scale: float): float =
-  let paddingBetweenBoxes = getScreenPadding()
-  result = (getAvailableRenderHeight()) * scale - paddingBetweenBoxes
+proc getTextBoxHeight(): float =
+  let outerPadding = getScreenPadding() * 2
+  result = getAvailableRenderHeight() - outerPadding
 
-proc getTextBoxHeightAdjusted(scale: float): float =
+proc getTextBoxHeightAdjusted(): float =
   let innerPadding = getScreenPadding() * 2
-  result = getTextBoxHeight(scale) + innerPadding
+  result = getTextBoxHeight() + innerPadding
 
-proc getSubTextBoxHeight(scale: float): float =
-  result = (getAvailableRenderHeight()) - getTextBoxHeightAdjusted(scale) - getScreenPadding()
+proc getTextBoxWidth(): float =
+  result = getAvailableRenderWidth() - getScrollBarWidth() - getScreenPadding()
+
+proc getTextBoxWidthAdjusted(): float =
+  result = getTextBoxWidth() - getScreenPadding()
 
 proc getTextBoxHeightOffset(): float =
   result = getTitleHeightTotal()
 
-proc getSubTextBoxHeightOffset(scale: float): float =
-  let paddingBetweenBoxes = getScreenPadding()
-  result = getTextBoxHeightOffset() + getTextBoxHeightAdjusted(scale) + paddingBetweenBoxes
+proc getSubTextBoxHeightOffset(): float =
+  result = float(screenHeight) - getSubTextBoxHeightTotal() - getTitleHeightTotal() + getScreenPadding() * 2
+
+proc getTextBoxMaxLines(): int =
+  let textBoxHeight = getTextBoxHeight()
+  result = int textBoxHeight / float(fontHeight())
 
 func getLockDesc(gameData: GameData, key: string): string =
   result = gameData.descriptions[gameData.lockDescriptions[key]]
@@ -68,6 +84,8 @@ func getRoomDesc(gameData: GameData, key: string): string =
 func getInv(gameData: GameData, key: string): seq[string] =
   if key in gameData.inventory:
     result = gameData.inventory[key]
+func getTitle(gameData: GameData, key: string): string =
+  result = gameData.titles[key]
 func syncToChannel(gameData: GameData, name: string): int =
   result = gameData.audioChannel[gameData.audioSync[name]]
 func normalize(num, min, max: float): float =
@@ -83,6 +101,55 @@ proc getFullRoomDesc(gameData: GameData, room: string): string =
       desc &= "\n" & gameData.getRoomDesc(item)
   result = desc
 
+proc clearTextInput() =
+  textInputString = ""
+
+proc startTyping() =
+  startTextInput()
+  clearTextInput()
+  isTyping = true
+
+proc scrollUp() =
+  if scroll > 0:
+    scroll -= 1
+
+proc scrollDown() =
+  if scroll < textBoxLines.len - textBoxMaxLines:
+    scroll += 1
+
+proc clampScroll() =
+  let upperBound =
+    if textBoxLines.len < textBoxMaxLines:
+      0
+    else:
+      textBoxLines.len - textBoxMaxLines
+  scroll = clamp(scroll, 0, upperBound)
+
+proc setTextBoxLines() =
+  textBoxLines = richWrapLines(textBoxText, int getTextBoxWidthAdjusted())
+
+proc setTextBoxLinesRender() =
+  let upperBound = clamp(scroll + textBoxMaxLines, 0, textBoxLines.len) - 1
+  textBoxLinesRender = textBoxLines[scroll .. upperBound]
+
+proc fixEverything() =
+  setTextBoxLines()
+  textBoxMaxLines = getTextBoxMaxLines()
+  clampScroll()
+  setTextBoxLinesRender()
+
+proc setDisplayTitle(input: string) =
+  displayTitle = input.multiReplace(colorReplaceTuples)
+
+proc setTextBoxText(input: string) =
+  textBoxText = input.multiReplace(colorReplaceTuples)
+  scroll = 0
+  fixEverything()
+
+proc addTextBoxText(input: string) =
+  textBoxText &= input.multiReplace(colorReplaceTuples)
+  fixEverything()
+
 proc parseInput(input: string, gameData: var GameData) =
   ## Parses player input and does too much
   echo "input: ", input
@@ -97,61 +164,58 @@ proc parseInput(input: string, gameData: var GameData) =
       if temp in gameData.objectWordToThing:
         temp = gameData.objectWordToThing[temp]
         if temp in gameData.exits[gameData.currentRoom]:
-          currentLine = 0
           if not gameData.isLocked[temp]:
-            displayText = "It's already <orange>unlocked</>.".multiReplace(colorReplaceTuples)
+            setTextBoxText("It's already <orange>unlocked</>.")
           elif gameData.needsKey[temp] in gameData.inventory[playerCharacter]:
-            displayText = "You <orange>unlock</> it.".multiReplace(colorReplaceTuples)
+            setTextBoxText("You <orange>unlock</> it.")
             gameData.isLocked[temp] = false
           else:
-            displayText = "You don't have the correct key."
+            setTextBoxText("You don't have the correct key.")
     of "enter":
       var temp = input.substr(verb.len).strip().toLower()
       if temp in gameData.objectWordToThing:
         temp = gameData.objectWordToThing[temp]
         if temp in gameData.exits[gameData.currentRoom]:
-          currentLine = 0
           if not gameData.isLocked[temp]:
             gameData.currentRoom = gameData.leadsTo[temp]
-            displayText = gameData.getFullRoomDesc(gameData.currentRoom)
+            setDisplayTitle(gameData.getTitle(gameData.currentRoom))
+            setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
           else:
-            displayText = gameData.getLockDesc(temp)
+            setTextBoxText(gameData.getLockDesc(temp))
     of "examine":
       var temp = input.substr(verb.len).strip().toLower()
       if temp in gameData.objectWordToThing:
         temp = gameData.objectWordToThing[temp]
         if temp in gameData.inventory[gameData.currentRoom] or temp in gameData.inventory[playerCharacter] or temp in gameData.exits[gameData.currentRoom]:
-          displayText = gameData.getSelfDesc(temp)
-          currentLine = 0
+          setTextBoxText(gameData.getSelfDesc(temp))
+          setDisplayTitle(gameData.getTitle(temp))
     of "look", "back":
-      displayText = gameData.getFullRoomDesc(gameData.currentRoom)
-      currentLine = 0
+      setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
+      setDisplayTitle(gameData.getTitle(gameData.currentRoom))
     of "drop":
       var temp = input.substr(verb.len).strip().toLower()
       if temp in gameData.objectWordToThing:
         temp = gameData.objectWordToThing[temp]
         if temp in gameData.inventory[playerCharacter]:
-          currentLine = 0
           gameData.inventory.addToSeqInTable(gameData.currentRoom, temp)
           gameData.inventory.removeFromSeqInTable(playerCharacter, temp)
-          displayText = "You <orange>drop</> the item.".multiReplace(colorReplaceTuples)
+          setTextBoxText("You <orange>drop</> the item.")
     of "take":
       var temp = input.substr(verb.len).strip().toLower()
       if temp in gameData.objectWordToThing:
         temp = gameData.objectWordToThing[temp]
         if temp in gameData.getInv(gameData.currentRoom):
-          currentLine = 0
           if gameData.canPickup[temp]:
-            displayText = "You put it in your <orange>inventory</>.".multiReplace(colorReplaceTuples)
+            setTextBoxText("You put it in your <orange>inventory</>.")
             gameData.inventory.addToSeqInTable(playerCharacter, temp)
             gameData.inventory.removeFromSeqInTable(gameData.currentRoom, temp)
           else:
-            displayText = "You can't pick that up."
+            setTextBoxText("You can't pick that up.")
     of "inventory":
-      currentLine = 0
-      displayText = "In your <orange>inventory</> you find:"
+      setDisplayTitle("In your <orange>inventory</> you find:")
+      setTextBoxText("")
       for thing in gameData.inventory[playerCharacter]:
-        displayText &= "\n" & gameData.titles[thing]
+        addTextBoxText(gameData.titles[thing] & "\n")
 
     #end of normal parse
     if verb in gameData.interactionVerbs:
@@ -252,8 +316,7 @@ proc parseInput(input: string, gameData: var GameData) =
                   if not isSync and isMusic:
                     music(idxChannel, idxAudio, if isLoop: -1 else: 0)
             of "display":
-              currentLine = 0
-              displayText = gameData.descriptions[gameCommand.tokens[1]]
+              setTextBoxText(gameData.descriptions[gameCommand.tokens[1]])
             of "unlock":
               gameData.isLocked[gameCommand.tokens[1]] = false
             of "lock":
@@ -291,18 +354,23 @@ proc parseInput(input: string, gameData: var GameData) =
       for req in toRemove:
         gameData.interactionVerbs.removeFromSeqInTable(verb, req)
 
+proc getScreenDimensions(): array[2, int] =
+  result[0] = screenWidth
+  result[1] = screenHeight
+
 proc gameInit() =
   loadFont(0, "assets/fonts/compass-pro-v1.1.png")
   setFont(0)
-  textInputString = ""
+  startTyping()
   textInputEventListener = addEventListener(proc(ev: Event): bool =
     if ev.kind == ekTextInput:
       textInputString &= ev.text
   )
-  displayText = getFullRoomDesc(gameData, gameData.currentRoom)
   let windowWidth = (screenWidth.float32 * getScreenScale()).int
   let windowHeight = (screenHeight.float32 * getScreenScale()).int
   setTargetSize(windowWidth div scale, windowHeight div scale)
+  setTextBoxText(getFullRoomDesc(gameData, gameData.currentRoom))
+  displayTitle = gameData.getTitle(gameData.currentRoom)
 
 proc gameUpdate(dt: float32) =
   var
@@ -346,26 +414,22 @@ proc gameUpdate(dt: float32) =
 
   if keyp(K_RETURN):
     if isTyping:
-      stopTextInput()
-      isTyping = false
       parseInput(textInputString, gameData)
-      showPointer = false
-    else:
-      isTyping = true
-      #clear when sending, but for debug clear when new
-      textInputString = ""
-      startTextInput()
+      clearTextInput()
 
   if keyp(K_BACKSPACE) and isTyping and textInputString.len > 0:
     textInputString.setLen(textInputString.len - 1)
 
-  if keyp(K_UP) and currentLine > 0: currentLine -= 1
-  if keyp(K_DOWN) and currentLine < totalLines - maxLines: currentLine += 1
+  if keyp(K_UP): 
+    scrollUp()
+    setTextBoxLinesRender()
+  if keyp(K_DOWN): 
+    scrollDown()
+    setTextBoxLinesRender()
 
   if keyp(K_F1):
     if scale > 1:
       # shrink text size
-      currentLine = 0
       scale -= 1
       let windowWidth = (screenWidth.float32 * getScreenScale()).int
       let windowHeight = (screenHeight.float32 * getScreenScale()).int
@@ -373,81 +437,105 @@ proc gameUpdate(dt: float32) =
   if keyp(K_F2):
     if scale < maxScale:
       # increase text size
-      currentLine = 0
       scale += 1
       let windowWidth = (screenWidth.float32 * getScreenScale()).int
       let windowHeight = (screenHeight.float32 * getScreenScale()).int
       setTargetSize(windowWidth div scale, windowHeight div scale)
-  if keyp(K_F3):
-    echo "F3 pressed"
-    maxLines += 1
-    currentLine = 0
-  if keyp(K_F4):
-    echo "F3 pressed"
-    currentLine = 0
-    if maxLines > minLines: maxLines -= 1
 
-proc oldDraw() =
-  #do this only once later
-  let wrappedLines = richWrapLines(displayText, screenWidth - 12)
-  totalLines = wrappedLines.len
-  let ratioVisible:float = float(maxLines) / float(totalLines)
-  let visibleHeight:float = float(fontHeight()) * float(maxLines) + 4
-  let scrollbarHeight:float = ratioVisible * visibleHeight
-  displayText = $(screenHeight / fontHeight()) & " " & $(glyphWidth('m', 2))
-  cls()
-  #textbox
-  setColor(7)
-  boxfill(4,4, screenWidth - 16, visibleHeight)
-  #grey part of scroll
-  setColor(6)
-  boxfill(screenWidth - 10, 4, 6, visibleHeight)
-  #white part of scroll
-  setColor(7)
-  if totalLines > maxLines:
-    boxfill(screenWidth - 10, float(currentLine) / float(totalLines) * float(visibleHeight) + 4, 6, float scrollbarHeight)
-  else:
-    boxfill(screenWidth - 10, 4, 6, visibleHeight)
-  setColor(1)
-  let maxIdx =
-    if currentLine + maxLines > totalLines:
-      totalLines - 1
-    else:
-      currentLine + maxLines - 1
-  for idx, line in wrappedLines[currentLine .. maxIdx]:
-    richPrint(line, 6, 6 + fontHeight() * idx)
-  setColor(7)
-  let offsetInput =
-    if screenWidth < (">" & textInputString).richPrintWidthOneLine + screenWidth * 0.1f:
-      (">" & textInputString).richPrintWidthOneLine - (screenWidth * 0.9f)
-    else:
-      0
-  let txtPointer = if showPointer: "|" else: ""
-  richPrint(">" & textInputString & txtPointer, int(1 - offsetInput), screenHeight - fontHeight() - 2)
+# proc oldDraw() =
+#   #do this only once later
+#   let wrappedLines = richWrapLines(displayText, screenWidth - 12)
+#   totalLines = wrappedLines.len
+#   let ratioVisible:float = float(maxLines) / float(totalLines)
+#   let visibleHeight:float = float(fontHeight()) * float(maxLines) + 4
+#   let scrollbarHeight:float = ratioVisible * visibleHeight
+#   cls()
+#   #textbox
+#   setColor(7)
+#   boxfill(4,4, screenWidth - 16, visibleHeight)
+#   #grey part of scroll
+#   setColor(6)
+#   boxfill(screenWidth - 10, 4, 6, visibleHeight)
+#   #white part of scroll
+#   setColor(7)
+#   if totalLines > maxLines:
+#     boxfill(screenWidth - 10, float(currentLine) / float(totalLines) * float(visibleHeight) + 4, 6, float scrollbarHeight)
+#   else:
+#     boxfill(screenWidth - 10, 4, 6, visibleHeight)
+#   setColor(1)
+#   let maxIdx =
+#     if currentLine + maxLines > totalLines:
+#       totalLines - 1
+#     else:
+#       currentLine + maxLines - 1
+#   for idx, line in wrappedLines[currentLine .. maxIdx]:
+#     richPrint(line, 6, 6 + fontHeight() * idx)
+#   setColor(7)
+#   let offsetInput =
+#     if screenWidth < (">" & textInputString).richPrintWidthOneLine + screenWidth * 0.1f:
+#       (">" & textInputString).richPrintWidthOneLine - (screenWidth * 0.9f)
+#     else:
+#       0
+#   let txtPointer = if showPointer: "|" else: ""
+#   richPrint(">" & textInputString & txtPointer, int(1 - offsetInput), screenHeight - fontHeight() - 2)
 
 proc drawTitle =
-  setColor(5)
+  setColor(7)
   boxfill(getScreenPadding(), getScreenPadding(), getAvailableRenderWidth(), getTitleHeight())
+  setColor(1)
+  richPrint(displayTitle, int getScreenPadding() * 2, int getScreenPadding() * 2)
 
 proc drawTextBox =
+  let offset = getTextBoxHeightOffset()
   setColor(7)
-  boxfill(getScreenPadding(), getTextBoxHeightOffset(), getAvailableRenderWidth(), getTextBoxHeightAdjusted(0.5))
+  boxfill(getScreenPadding(), offset, getTextBoxWidth(), getTextBoxHeightAdjusted())
+  setColor(1)
+  for idx, line in textBoxLinesRender:
+    richPrint(line, int getScreenPadding() * 2, int(offset) + int(getScreenPadding()) + int(fontHeight()) * idx)
+
+proc drawScrollBar =
+  let
+    offsetY: int = int getTextBoxHeightOffset()
+    offsetX: int = screenWidth - int(getScrollBarWidth()) - int(getScreenPadding())
+    visibleRatio: float = clamp(textBoxMaxLines / textBoxLines.len, 0, 1)
+    scrollRatio: float = clamp(scroll / textBoxLines.len, 0, 1)
+    scrollCursorHeight: float = visibleRatio * getTextBoxHeightAdjusted()
+    cursorOffsetY: int = offsetY + int(scrollRatio * getTextBoxHeightAdjusted())
+  setColor(6)
+  boxfill(offsetX, offsetY, getScrollBarWidth(), getTextBoxHeightAdjusted())
+  #cursor
+  setColor(7)
+  boxfill(offsetX, cursorOffsetY, getScrollBarWidth(), scrollCursorHeight)
 
 proc drawSubTextBox =
   setColor(6)
-  boxfill(getScreenPadding(), getSubTextBoxHeightOffset(0.5), getAvailableRenderWidth(), getSubTextBoxHeight(0.5))
+  boxfill(getScreenPadding(), getSubTextBoxHeightOffset(), getAvailableRenderWidth(), getSubTextBoxHeightTotal() - getScreenPadding() * 2)
+  setColor(0)
+  richPrint("hello", int getScreenPadding() * 2, int getSubTextBoxHeightOffset() + getScreenPadding())
+  richPrint("hello", int getScreenPadding() * 2, int getSubTextBoxHeightOffset() + getScreenPadding() + fontHeight() * 1)
+  richPrint("hello", int getScreenPadding() * 2, int getSubTextBoxHeightOffset() + getScreenPadding() + fontHeight() * 2)
 
 proc drawInputArea =
+  let
+    textPointer = if showPointer: "|" else: ""
+    offsetY = float(screenHeight) - getTitleHeight() - getScreenPadding()
   setColor(5)
-  boxfill(getScreenPadding(), float(screenHeight) - getTitleHeight() - getScreenPadding(), getAvailableRenderWidth(), getTitleHeight())
+  boxfill(getScreenPadding(), offsetY, getAvailableRenderWidth(), getTitleHeight())
+  setColor(7)
+  #TODO figure out scrolling
+  richPrint(">" & textInputString & textPointer, int getScreenPadding() * 2, int offsetY + getScreenPadding())
 
 proc gameDraw() =
+  let currentScreenDim = getScreenDimensions()
+  #if screen dim changed, fix all the stuff
+  if lastScreenDimensions != currentScreenDim:
+    lastScreenDimensions = currentScreenDim
+    fixEverything()
   drawTitle()
   drawTextBox()
+  drawScrollBar()
   drawSubTextBox()
   drawInputArea()
-  setColor(8)
-  richPrint($getScreenScale() & "\n" & $getTitleHeight() & "\n"  & $getTitleHeightTotal() & "\n" & $getTextBoxHeightOffset() & "\n" & $fontHeight() & "\n" & $getScreenPadding() & "\n" & $getAvailableRenderHeight(),0,0)
 
 # initialization
 nico.init("nico", "test")
@@ -459,7 +547,7 @@ fixedSize(false)
 integerScale(true)
 
 # create the window
-nico.createWindow("nico",128,128,4)
+nico.createWindow("nico",250,250,4)
 
 # start, say which functions to use for init, update and draw
 nico.run(gameInit, gameUpdate, gameDraw)

@@ -1,0 +1,7 @@
+verb:play
+object:violin
+room:bedroom
+inventory:playerCharacter/violin
+event:display/violin playing
+event:audio/play/Bach/loop
+event:audio/sync/Prokof/to/Bach;audio/play/Prokof/loop;audio/fadeIn/Prokof/5

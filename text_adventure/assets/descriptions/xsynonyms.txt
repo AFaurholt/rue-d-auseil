@@ -1,0 +1,2 @@
+take: pick up
+enter: go in, walk in

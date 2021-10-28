@@ -1,0 +1,9 @@
+object:case
+verb:examine
+room:bedroom
+event: item/add/violin/bedroom
+event: item/del/bedstead/bedroom
+event: desc/self/bedroom/key self
+event: lock/door to the bedroom; display/violin self
+inventory:                     bedroom/violin
+once

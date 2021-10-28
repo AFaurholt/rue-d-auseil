@@ -1,2 +1,5 @@
 verb: music3
-event: audio/fadeOut/Prokof/3
+event: audio/mute/Prokof/3
+event: audio/mute/Bach/3
+event: audio/fadeIn/Prokof/3
+event: audio/fadeIn/Bach/3

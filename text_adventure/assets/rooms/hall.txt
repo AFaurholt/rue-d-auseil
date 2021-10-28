@@ -1,3 +1,5 @@
 title:Hall
-selfDescription:missing
+selfDescription:hall
 exits:door to the bedroom
+
+startRoom

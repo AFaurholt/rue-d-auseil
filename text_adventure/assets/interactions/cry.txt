@@ -1,0 +1,9 @@
+verb:cry
+inventory:playerCharacter/violin
+
+event:audio/mute/Bach
+event:audio/mute/Prokof
+event:display/crying
+
+event:audio/play/Flow/loop
+event:audio/fadeOut/Flow/20

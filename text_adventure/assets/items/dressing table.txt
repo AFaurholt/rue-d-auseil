@@ -1,0 +1,6 @@
+title:Dressing table
+selfDescription:dressing table self
+roomDescription:dressing table room
+pickup:false
+inRoom:bedroom
+object:table,dressing table,dresser

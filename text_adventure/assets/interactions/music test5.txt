@@ -1,2 +1,3 @@
 verb:music5
 event:audio/fadeIn/Prokof/10
+event:audio/fadeOut/Prokof/10

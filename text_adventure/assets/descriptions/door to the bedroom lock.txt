@@ -1,1 +1,1 @@
-Shit's locked
+You cannot budge the door. It appears locked. Is there a <blue>key</>?

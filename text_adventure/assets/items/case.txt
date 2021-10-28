@@ -1,0 +1,6 @@
+title:Case
+selfDescription:case self
+roomDescription:case room
+pickup:false
+inRoom:bedroom
+object:case,violin case
