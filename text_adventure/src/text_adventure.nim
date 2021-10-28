@@ -1,4 +1,3 @@
-# the following code is taken from https://gist.github.com/ftsf/464aa66e1782bbd803ada33615bdc212 and is placeholder
 import std/[tables, strutils, os, parseutils]
 import nico
 import nico/utils
