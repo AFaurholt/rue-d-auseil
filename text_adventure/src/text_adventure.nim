@@ -5,6 +5,7 @@ import text_adventure/helper
 
 var
   textInputString: string
+  textInputDisplayString: string
   textInputEventListener: EventListener
   step = 0
   frame: uint = 0
@@ -102,6 +103,7 @@ proc getFullRoomDesc(gameData: GameData, room: string): string =
 
 proc clearTextInput() =
   textInputString = ""
+  textInputDisplayString = ""
 
 proc startTyping() =
   startTextInput()
@@ -118,10 +120,8 @@ proc scrollDown() =
 
 proc clampScroll() =
   let upperBound =
-    if textBoxLines.len < textBoxMaxLines:
-      0
-    else:
-      textBoxLines.len - textBoxMaxLines
+    if textBoxLines.len < textBoxMaxLines: 0
+    else: textBoxLines.len - textBoxMaxLines
   scroll = clamp(scroll, 0, upperBound)
 
 proc setTextBoxLines() =
@@ -357,13 +357,24 @@ proc getScreenDimensions(): array[2, int] =
   result[0] = screenWidth
   result[1] = screenHeight
 
+proc setInputDisplay =
+  var offset = 0
+  var tmp = ">" & textInputString & "|"
+  var width: int = int getAvailableRenderWidth() - getScreenPadding() * 2
+  while richPrintWidthOneLine(tmp, offset) > width:
+    offset += 1
+
+  textInputDisplayString = (">" & textInputString)[offset+1 .. ^1]
+
 proc gameInit() =
   loadFont(0, "assets/fonts/compass-pro-v1.1.png")
   setFont(0)
   startTyping()
   textInputEventListener = addEventListener(proc(ev: Event): bool =
     if ev.kind == ekTextInput:
-      textInputString &= ev.text
+      if ev.text != "<" and ev.text != ">":
+        textInputString &= ev.text
+        setInputDisplay()
   )
   let windowWidth = (screenWidth.float32 * getScreenScale()).int
   let windowHeight = (screenHeight.float32 * getScreenScale()).int
@@ -418,6 +429,7 @@ proc gameUpdate(dt: float32) =
 
   if keyp(K_BACKSPACE) and isTyping and textInputString.len > 0:
     textInputString.setLen(textInputString.len - 1)
+    setInputDisplay()
 
   if keyp(K_UP): 
     scrollUp()
@@ -521,8 +533,7 @@ proc drawInputArea =
   setColor(5)
   boxfill(getScreenPadding(), offsetY, getAvailableRenderWidth(), getTitleHeight())
   setColor(7)
-  #TODO figure out scrolling
-  richPrint(">" & textInputString & textPointer, int getScreenPadding() * 2, int offsetY + getScreenPadding())
+  richPrint(">" & textInputDisplayString & textPointer, int getScreenPadding() * 2, int offsetY + getScreenPadding())
 
 proc gameDraw() =
   let currentScreenDim = getScreenDimensions()
