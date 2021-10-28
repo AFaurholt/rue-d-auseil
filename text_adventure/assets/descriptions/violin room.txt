@@ -1,1 +1,1 @@
-The case contains a violin and bow.
+The case contains a <blue>violin <blue>and <blue>bow</>.

@@ -1,6 +1,6 @@
 title:Portal to hell
-leadsTo:hall
+leadsTo:hell
 roomDescription:hell portal
 selfDescription:portal self
-object:portal, hell portal
+object:portal,hell portal,portal to hell,hell,door to hell
 isLocked:false

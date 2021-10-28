@@ -7,7 +7,6 @@ var
   textInputString: string
   textInputDisplayString: string
   textInputEventListener: EventListener
-  step = 0
   frame: uint = 0
   scale = 2
   maxScale = 4
@@ -17,7 +16,11 @@ var
   textBoxText = ""
   textBoxLines: seq[string] = @["test"]
   textBoxLinesRender: seq[string]
+  textBoxLinesRenderStep = 0
+  subTextBoxLinesRender: array[3, string]
+  subTextBoxLinesRenderStep = 0
   displayTitle = "test"
+  displayTitleStep = 0
   lastScreenDimensions: array[2, int]
   showPointer = false
   em = 8'f
@@ -138,12 +141,25 @@ proc fixEverything() =
   setTextBoxLinesRender()
 
 proc setDisplayTitle(input: string) =
+  displayTitleStep = 0
   displayTitle = input.multiReplace(colorReplaceTuples)
 
 proc setTextBoxText(input: string) =
   textBoxText = input.multiReplace(colorReplaceTuples)
   scroll = 0
+  textBoxLinesRenderStep = 0
   fixEverything()
+
+proc setSubTextBoxLines(line1 = "", line2 = "", line3 = "") =
+  subTextBoxLinesRenderStep = 0
+  subTextBoxLinesRender = [
+    line1.multiReplace(colorReplaceTuples)
+    ,line2.multiReplace(colorReplaceTuples)
+    ,line3.multiReplace(colorReplaceTuples)
+  ]
+
+proc setSubTextBoxLine(text: string, idx: int) =
+  subTextBoxLinesRender[idx] = text.multiReplace(colorReplaceTuples)
 
 proc addTextBoxText(input: string) =
   textBoxText &= input.multiReplace(colorReplaceTuples)
@@ -153,6 +169,7 @@ proc parseInput(input: string, gameData: var GameData) =
   ## Parses player input and does too much
   echo "input: ", input
   var verb: string
+  setSubTextBoxLines(">"&input)
   if parseIdent(input.strip(), verb, 0) != 0:
     case verb:
     of "debug":
@@ -160,56 +177,91 @@ proc parseInput(input: string, gameData: var GameData) =
       echo gameData
     of "unlock":
       var temp = input.substr(verb.len).strip().toLower()
-      if temp in gameData.objectWordToThing:
-        temp = gameData.objectWordToThing[temp]
-        if temp in gameData.exits[gameData.currentRoom]:
-          if not gameData.isLocked[temp]:
-            setTextBoxText("It's already <orange>unlocked</>.")
-          elif gameData.needsKey[temp] in gameData.inventory[playerCharacter]:
-            setTextBoxText("You <orange>unlock</> it.")
-            gameData.isLocked[temp] = false
+      if temp.isEmptyOrWhitespace():
+        setSubTextBoxLine("<orange>Unlock</> what?", 1)
+      elif temp in gameData.objectWordToThing:
+          temp = gameData.objectWordToThing[temp]
+          if temp in gameData.exits[gameData.currentRoom]:
+            if not gameData.isLocked[temp]:
+              setSubTextBoxLine("It's already <orange>unlocked</>.", 1)
+            elif gameData.needsKey[temp] in gameData.inventory[playerCharacter]:
+              setSubTextBoxLine("You <orange>unlock</> it.", 1)
+              gameData.isLocked[temp] = false
+            else:
+              setSubTextBoxLine("You are missing the key.", 1)
           else:
-            setTextBoxText("You don't have the correct key.")
+            setSubTextBoxLine("Nowhere to be seen.", 1)
+      else:
+        setSubTextBoxLine("Nowhere to be seen.", 1)
     of "enter":
       var temp = input.substr(verb.len).strip().toLower()
-      if temp in gameData.objectWordToThing:
-        temp = gameData.objectWordToThing[temp]
-        if temp in gameData.exits[gameData.currentRoom]:
-          if not gameData.isLocked[temp]:
-            gameData.currentRoom = gameData.leadsTo[temp]
-            setDisplayTitle(gameData.getTitle(gameData.currentRoom))
-            setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
-          else:
-            setTextBoxText(gameData.getLockDesc(temp))
+      if temp.isEmptyOrWhitespace():
+        setSubTextBoxLine("<orange>Enter</> what?", 1)
+      elif temp in gameData.objectWordToThing:
+          temp = gameData.objectWordToThing[temp]
+          if temp in gameData.exits[gameData.currentRoom]:
+            if not gameData.isLocked[temp]:
+              gameData.currentRoom = gameData.leadsTo[temp]
+              setDisplayTitle(gameData.getTitle(gameData.currentRoom))
+              setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
+              setSubTextBoxLine("You <orange>enter</>...", 1)
+            else:
+              setDisplayTitle(gameData.getTitle(temp))
+              setTextBoxText(gameData.getLockDesc(temp))
+              setSubTextBoxLine("Locked.", 1)
+      else:
+        setSubTextBoxLine("Nope.", 1)
     of "examine":
       var temp = input.substr(verb.len).strip().toLower()
-      if temp in gameData.objectWordToThing:
-        temp = gameData.objectWordToThing[temp]
-        if temp in gameData.inventory[gameData.currentRoom] or temp in gameData.inventory[playerCharacter] or temp in gameData.exits[gameData.currentRoom]:
-          setTextBoxText(gameData.getSelfDesc(temp))
-          setDisplayTitle(gameData.getTitle(temp))
+      if temp.isEmptyOrWhitespace():
+        setSubTextBoxLine("<orange>Examine</> what?", 1)
+      elif temp in gameData.objectWordToThing:
+          temp = gameData.objectWordToThing[temp]
+          if temp in gameData.inventory[gameData.currentRoom] or temp in gameData.inventory[playerCharacter] or temp in gameData.exits[gameData.currentRoom]:
+            setTextBoxText(gameData.getSelfDesc(temp))
+            setDisplayTitle(gameData.getTitle(temp))
+            setSubTextBoxLine("You take a closer look...", 1)
+          else:
+            setSubTextBoxLine("Nowhere to be seen.", 1)
+      else:
+        setSubTextBoxLine("Nowhere to be seen.", 1)
     of "look", "back":
       setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
       setDisplayTitle(gameData.getTitle(gameData.currentRoom))
+      setSubTextBoxLine("You <orange>look</> around...", 1)
     of "drop":
       var temp = input.substr(verb.len).strip().toLower()
-      if temp in gameData.objectWordToThing:
+      if temp.isEmptyOrWhitespace():
+        setSubTextBoxLine("<orange>Drop</> what?", 1)
+      elif temp in gameData.objectWordToThing:
         temp = gameData.objectWordToThing[temp]
         if temp in gameData.inventory[playerCharacter]:
           gameData.inventory.addToSeqInTable(gameData.currentRoom, temp)
           gameData.inventory.removeFromSeqInTable(playerCharacter, temp)
-          setTextBoxText("You <orange>drop</> the item.")
+          setSubTextBoxLine("You <orange>drop</> the item.", 1)
+          setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
+        else:
+          setSubTextBoxLine("Not in your <orange>inventory</>...", 1)
+      else:
+        setSubTextBoxLine("Not in your <orange>inventory</>...", 1)
     of "take":
       var temp = input.substr(verb.len).strip().toLower()
-      if temp in gameData.objectWordToThing:
-        temp = gameData.objectWordToThing[temp]
-        if temp in gameData.getInv(gameData.currentRoom):
-          if gameData.canPickup[temp]:
-            setTextBoxText("You put it in your <orange>inventory</>.")
-            gameData.inventory.addToSeqInTable(playerCharacter, temp)
-            gameData.inventory.removeFromSeqInTable(gameData.currentRoom, temp)
+      if temp.isEmptyOrWhitespace():
+        setSubTextBoxLine("<orange>Take</> what?", 1)
+      elif temp in gameData.objectWordToThing:
+          temp = gameData.objectWordToThing[temp]
+          if temp in gameData.getInv(gameData.currentRoom):
+            if gameData.canPickup[temp]:
+              setSubTextBoxLine("You put it in your <orange>inventory</>.", 1)
+              gameData.inventory.addToSeqInTable(playerCharacter, temp)
+              gameData.inventory.removeFromSeqInTable(gameData.currentRoom, temp)
+              setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
+            else:
+              setSubTextBoxLine("You can't pick that up.", 1)
           else:
-            setTextBoxText("You can't pick that up.")
+            setSubTextBoxLine("Nowhere to be seen.", 1)
+      else:
+        setSubTextBoxLine("Nowhere to be seen.", 1)
     of "inventory":
       setDisplayTitle("In your <orange>inventory</> you find:")
       setTextBoxText("")
@@ -416,9 +468,11 @@ proc gameUpdate(dt: float32) =
   gameData.fadeInQueue = newFadeInQueue
 
   frame.inc()
-  if frame mod 5 == 0:
-    step += 1
-  if frame mod 50 == 0:
+  if frame mod 2 == 0:
+    textBoxLinesRenderStep += 1
+    subTextBoxLinesRenderStep += 1
+    displayTitleStep += 1
+  if frame mod 40 == 0:
     if isTyping:
       showPointer = not showPointer
 
@@ -453,48 +507,11 @@ proc gameUpdate(dt: float32) =
       let windowHeight = (screenHeight.float32 * getScreenScale()).int
       setTargetSize(windowWidth div scale, windowHeight div scale)
 
-# proc oldDraw() =
-#   #do this only once later
-#   let wrappedLines = richWrapLines(displayText, screenWidth - 12)
-#   totalLines = wrappedLines.len
-#   let ratioVisible:float = float(maxLines) / float(totalLines)
-#   let visibleHeight:float = float(fontHeight()) * float(maxLines) + 4
-#   let scrollbarHeight:float = ratioVisible * visibleHeight
-#   cls()
-#   #textbox
-#   setColor(7)
-#   boxfill(4,4, screenWidth - 16, visibleHeight)
-#   #grey part of scroll
-#   setColor(6)
-#   boxfill(screenWidth - 10, 4, 6, visibleHeight)
-#   #white part of scroll
-#   setColor(7)
-#   if totalLines > maxLines:
-#     boxfill(screenWidth - 10, float(currentLine) / float(totalLines) * float(visibleHeight) + 4, 6, float scrollbarHeight)
-#   else:
-#     boxfill(screenWidth - 10, 4, 6, visibleHeight)
-#   setColor(1)
-#   let maxIdx =
-#     if currentLine + maxLines > totalLines:
-#       totalLines - 1
-#     else:
-#       currentLine + maxLines - 1
-#   for idx, line in wrappedLines[currentLine .. maxIdx]:
-#     richPrint(line, 6, 6 + fontHeight() * idx)
-#   setColor(7)
-#   let offsetInput =
-#     if screenWidth < (">" & textInputString).richPrintWidthOneLine + screenWidth * 0.1f:
-#       (">" & textInputString).richPrintWidthOneLine - (screenWidth * 0.9f)
-#     else:
-#       0
-#   let txtPointer = if showPointer: "|" else: ""
-#   richPrint(">" & textInputString & txtPointer, int(1 - offsetInput), screenHeight - fontHeight() - 2)
-
 proc drawTitle =
   setColor(7)
   boxfill(getScreenPadding(), getScreenPadding(), getAvailableRenderWidth(), getTitleHeight())
   setColor(1)
-  richPrint(displayTitle, int getScreenPadding() * 2, int getScreenPadding() * 2)
+  richPrint(displayTitle, int getScreenPadding() * 2, int getScreenPadding() * 2, step = displayTitleStep)
 
 proc drawTextBox =
   let offset = getTextBoxHeightOffset()
@@ -502,7 +519,7 @@ proc drawTextBox =
   boxfill(getScreenPadding(), offset, getTextBoxWidth(), getTextBoxHeightAdjusted())
   setColor(1)
   for idx, line in textBoxLinesRender:
-    richPrint(line, int getScreenPadding() * 2, int(offset) + int(getScreenPadding()) + int(fontHeight()) * idx)
+    richPrint(line, int getScreenPadding() * 2, int(offset) + int(getScreenPadding()) + int(fontHeight()) * idx, step = textBoxLinesRenderStep)
 
 proc drawScrollBar =
   let
@@ -519,12 +536,11 @@ proc drawScrollBar =
   boxfill(offsetX, cursorOffsetY, getScrollBarWidth(), scrollCursorHeight)
 
 proc drawSubTextBox =
-  setColor(6)
+  setColor(5)
   boxfill(getScreenPadding(), getSubTextBoxHeightOffset(), getAvailableRenderWidth(), getSubTextBoxHeightTotal() - getScreenPadding() * 2)
-  setColor(0)
-  richPrint("hello", int getScreenPadding() * 2, int getSubTextBoxHeightOffset() + getScreenPadding())
-  richPrint("hello", int getScreenPadding() * 2, int getSubTextBoxHeightOffset() + getScreenPadding() + fontHeight() * 1)
-  richPrint("hello", int getScreenPadding() * 2, int getSubTextBoxHeightOffset() + getScreenPadding() + fontHeight() * 2)
+  setColor(6)
+  for idx, line in subTextBoxLinesRender:
+    richPrint(line, int getScreenPadding() * 2, int getSubTextBoxHeightOffset() + getScreenPadding() + fontHeight() * idx, step = subTextBoxLinesRenderStep)
 
 proc drawInputArea =
   let

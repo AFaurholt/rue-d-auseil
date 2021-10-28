@@ -1,6 +1,6 @@
 title:Violin
 pickup:true
-object:violin, bow, violin and bow
+object:violin, bow, violin and bow,it
 roomDescription:violin room
 selfDescription:violin self
 inRoom:bedroom

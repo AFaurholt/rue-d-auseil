@@ -1,1 +1,1 @@
-Door to the entrance
+There is a <blue>door</> which leads back into the hall.

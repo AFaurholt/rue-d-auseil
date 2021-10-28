@@ -1,1 +1,1 @@
-You see an thick <blue>door <blue>to <blue>the <blue>bedroom</>. Maybe you could <orange>enter</> it?
+You see a thick <blue>door <blue>to <blue>the <blue>bedroom</>. Maybe you could <orange>enter</> it?

@@ -1,0 +1,6 @@
+title:Pitchfork
+pickup:true
+object:pitchfork
+roomDescription:pitchfork room
+selfDescription:pitchfork self
+inRoom:hell

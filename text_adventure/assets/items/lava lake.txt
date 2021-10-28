@@ -1,0 +1,6 @@
+title:Lava lake
+selfDescription:lava lake self
+roomDescription:lava lake room
+pickup:false
+inRoom:hell
+object:lava lake

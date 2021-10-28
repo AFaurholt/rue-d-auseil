@@ -3,4 +3,4 @@ selfDescription:dressing table self
 roomDescription:dressing table room
 pickup:false
 inRoom:bedroom
-object:table,dressing table,dresser
+object:table,dressing table,dresser,chest,chest of drawers

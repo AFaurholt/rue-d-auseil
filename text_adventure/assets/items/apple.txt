@@ -1,0 +1,6 @@
+title:Apple
+pickup:true
+object:apple
+roomDescription:apple room
+selfDescription:apple self
+inRoom:hell

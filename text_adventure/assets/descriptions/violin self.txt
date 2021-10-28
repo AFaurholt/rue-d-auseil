@@ -1,5 +1,5 @@
-The violin has a deep red varnish brushed over golden wood. In contrast to everything else in the room, it shows no sign of wear. It does not, however, look new or unused but exhibits rather the clean, uncorrupted lines of intensely focused purpose.
+You open the case. The <blue>violin</> has a deep red varnish brushed over golden wood. In contrast to everything else in the room, it shows no sign of wear. It does not, however, look new or unused but exhibits rather the clean, uncorrupted lines of intensely focused purpose.
 
-The bow is of a dark burgundy wood which seems to glow with an inner fire. When placed on the strings, it is light and quick and almost seems to move on its own.
+The <Blue>bow</> is of a dark burgundy wood which seems to glow with an inner fire. When placed on the strings, it is light and quick and almost seems to move on its own.
 
-Looking at the violin, you struggle not to <orange>cry</>.
+As you <orange>take</> the <blue>violin</>, you struggle not to <orange>cry</>.

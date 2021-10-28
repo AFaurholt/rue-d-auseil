@@ -2,4 +2,3 @@ title:Hall
 selfDescription:hall
 exits:door to the bedroom
 
-startRoom

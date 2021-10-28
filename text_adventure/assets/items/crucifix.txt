@@ -1,5 +1,5 @@
 title:Crucifix
 pickup:true
-object:crucifix
+object:crucifix,something hidden,something
 roomDescription:crucifix room
 selfDescription:crucifix self

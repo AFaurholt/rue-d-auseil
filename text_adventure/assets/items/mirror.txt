@@ -1,0 +1,6 @@
+title:Mirror
+selfDescription:mirror self
+roomDescription:mirror room
+pickup:false
+inRoom:bedroom
+object:mirror,reflection,dark mirror

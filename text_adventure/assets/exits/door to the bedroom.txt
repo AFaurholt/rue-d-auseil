@@ -1,7 +1,6 @@
 title:Bedroom door
 leadsTo:bedroom
 roomDescription:bedroom door room
-selfDescription:bedroom door self
 object:bedroom door,door to the bedroom,bedroom,door
 isLocked:true
 lockDescription:door to the bedroom lock

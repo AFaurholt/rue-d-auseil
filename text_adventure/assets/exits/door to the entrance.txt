@@ -1,5 +1,5 @@
 title:Entrance door
 leadsTo:hall
 roomDescription:door to the entrance
-object:entrance door,hall door,door to the entrance
+object:entrance door,hall door,door to the entrance,door to the hall
 isLocked:false

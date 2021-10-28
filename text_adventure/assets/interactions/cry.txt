@@ -1,6 +1,6 @@
 verb:cry
 inventory:playerCharacter/violin
-
+room:bedroom
 event:audio/mute/Bach
 event:audio/mute/Prokof
 event:display/crying
