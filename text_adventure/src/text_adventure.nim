@@ -519,12 +519,12 @@ proc drawTextBox =
   boxfill(getScreenPadding(), offset, getTextBoxWidth(), getTextBoxHeightAdjusted())
   setColor(1)
   for idx, line in textBoxLinesRender:
-    richPrint(line, int getScreenPadding() * 2, int(offset) + int(getScreenPadding()) + int(fontHeight()) * idx, step = textBoxLinesRenderStep)
+    richPrint(line, int getScreenPadding() * 2, int offset + getScreenPadding() + float(fontHeight() * idx), step = textBoxLinesRenderStep)
 
 proc drawScrollBar =
   let
     offsetY: int = int getTextBoxHeightOffset()
-    offsetX: int = screenWidth - int(getScrollBarWidth()) - int(getScreenPadding())
+    offsetX: int = int float(screenWidth) - getScrollBarWidth() - getScreenPadding()
     visibleRatio: float = clamp(textBoxMaxLines / textBoxLines.len, 0, 1)
     scrollRatio: float = clamp(scroll / textBoxLines.len, 0, 1)
     scrollCursorHeight: float = visibleRatio * getTextBoxHeightAdjusted()
