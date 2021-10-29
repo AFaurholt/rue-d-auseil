@@ -5,6 +5,6 @@ event: item/add/violin/bedroom
 event: item/del/case/bedroom
 
 event: lock/door to the bedroom; display/violin self
-inventory:                     bedroom/case
+inventory: bedroom/case
 
 once

@@ -5,6 +5,6 @@ event: item/add/crucifix/bedroom
 event: item/del/bedstead/bedroom
 
 event: lock/door to the bedroom; display/crucifix room
-inventory:                     bedroom/bedstead
+inventory: bedroom/bedstead
 
 once

@@ -1,0 +1,6 @@
+title:Nosatralabe
+selfDescription:nostralabe self
+roomDescription:nostralabe room
+pickup:false
+inRoom:bedroom
+object:nostralabe,ornate work

@@ -1,0 +1,6 @@
+title:Pages
+selfDescription:pages self
+roomDescription:pages room
+pickup:true
+inRoom:bedroom
+object:pages,music,sheet music,manuscript,manuscripts

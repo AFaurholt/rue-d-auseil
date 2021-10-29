@@ -1,0 +1,4 @@
+verb:test
+event:subDisplay/1/<red>Hello</>
+event:subDisplay/2/<orange>Hello</>
+event:subDisplay/3/<white>Hello</> Hello

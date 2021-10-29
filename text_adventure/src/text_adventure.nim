@@ -161,6 +161,13 @@ proc setSubTextBoxLines(line1 = "", line2 = "", line3 = "") =
 proc setSubTextBoxLine(text: string, idx: int) =
   subTextBoxLinesRender[idx] = text.multiReplace(colorReplaceTuples)
 
+proc setSubTextBoxLine(text: seq[string], idx: int) =
+  var allText = ""
+  for line in text:
+    allText &= line
+
+  setSubTextBoxLine(allText, idx)
+
 proc addTextBoxText(input: string) =
   textBoxText &= input.multiReplace(colorReplaceTuples)
   fixEverything()
@@ -170,7 +177,7 @@ proc parseInput(input: string, gameData: var GameData) =
   echo "input: ", input
   var verb: string
   setSubTextBoxLines(">"&input)
-  if parseIdent(input.strip(), verb, 0) != 0:
+  if parseIdent(input.strip().toLower(), verb, 0) != 0:
     case verb:
     of "debug":
       echo "game state:"
@@ -368,6 +375,14 @@ proc parseInput(input: string, gameData: var GameData) =
                     music(idxChannel, idxAudio, if isLoop: -1 else: 0)
             of "display":
               setTextBoxText(gameData.descriptions[gameCommand.tokens[1]])
+            of "subDisplay":
+              case gameCommand.tokens[1]:
+              of "1":
+                setSubTextBoxLine(gameCommand.tokens[2 .. ^1], 0)
+              of "2":
+                setSubTextBoxLine(gameCommand.tokens[2 .. ^1], 1)
+              of "3":
+                setSubTextBoxLine(gameCommand.tokens[2 .. ^1], 2)
             of "unlock":
               gameData.isLocked[gameCommand.tokens[1]] = false
             of "lock":
@@ -398,6 +413,8 @@ proc parseInput(input: string, gameData: var GameData) =
                 gameData.roomDescriptions[gameCommand.tokens[2]] = gameCommand.tokens[3]
               of "lock":
                 gameData.lockDescriptions[gameCommand.tokens[2]] = gameCommand.tokens[3]
+            of "refresh":
+              setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
 
           if req.once:
             toRemove.add(req)

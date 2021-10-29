@@ -2,4 +2,4 @@ title:Hell
 selfDescription:hell
 exits:door to the entrance
 
-startRoom
+
