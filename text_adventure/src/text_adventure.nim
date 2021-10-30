@@ -326,6 +326,8 @@ proc checkInteraction(verb, objectWord: string, gameData: var GameData) =
                 gameData.flags[gameCommand.tokens[2]] = true
               of "unset":
                 gameData.flags[gameCommand.tokens[2]] = false
+            of "gameOver":
+              gameData.isGameOver = true
 
           if req.once:
             toRemove.add(req)
@@ -342,12 +344,10 @@ proc newGame(gameData: var GameData) =
   checkInteraction("!init", "", gameData)
 
 proc checkForNewGameSaveLoad(verb, objectWord: string, gameData: var GameData) =
-  echo "hello"
   case verb:
   of "!newgame":
     gameData.newGame()
   of "!save":
-    echo "saving"
     if objectWord.len > 0:
       setSubTextBoxLine("Trying to save...", 1)
       try:
@@ -386,10 +386,7 @@ proc parseInput(input: string, gameData: var GameData) =
   var verb: string
   setSubTextBoxLines(">"&input)
   if parseVerb(input.strip().toLower(), verb, 0) != 0:
-    echo verb
-    echo gameData.isGameOver
     if not gameData.isGameOver:
-      echo "playing"
       checkForNewGameSaveLoad(verb, input.substr(verb.len).strip(), gameData)
       case verb:
       of "debug":
@@ -650,7 +647,7 @@ proc gameDraw() =
   drawInputArea()
 
 # initialization
-nico.init("nico", "test")
+nico.init("AFaurholt", "Text Adventure Engine 0.2.0")
 
 gameData.newGame()
 
@@ -659,7 +656,7 @@ fixedSize(false)
 integerScale(true)
 
 # create the window
-nico.createWindow("nico",250,250,4)
+nico.createWindow("Text Adventure Engine 0.2.0",250,250,4)
 
 # start, say which functions to use for init, update and draw
 nico.run(gameInit, gameUpdate, gameDraw)
