@@ -1,0 +1,4 @@
+verb:unset
+flag:bob
+event:flag/unset/bob
+event:subDisplay/2/unset bob

@@ -1,4 +1,4 @@
-import std/[tables, strutils, os, parseutils]
+import std/[tables, strutils, os, parseutils, streams, marshal]
 import nico
 import nico/utils
 import text_adventure/helper
@@ -19,7 +19,7 @@ var
   textBoxLinesRenderStep = 0
   subTextBoxLinesRender: array[3, string]
   subTextBoxLinesRenderStep = 0
-  displayTitle = "test"
+  displayTitle = ""
   displayTitleStep = 0
   lastScreenDimensions: array[2, int]
   showPointer = false
@@ -172,131 +172,36 @@ proc addTextBoxText(input: string) =
   textBoxText &= input.multiReplace(colorReplaceTuples)
   fixEverything()
 
-proc parseInput(input: string, gameData: var GameData) =
-  ## Parses player input and does too much
-  echo "input: ", input
-  var verb: string
-  setSubTextBoxLines(">"&input)
-  if parseIdent(input.strip().toLower(), verb, 0) != 0:
-    case verb:
-    of "debug":
-      echo "game state:"
-      echo gameData
-    of "unlock":
-      var temp = input.substr(verb.len).strip().toLower()
-      if temp.isEmptyOrWhitespace():
-        setSubTextBoxLine("<orange>Unlock</> what?", 1)
-      elif temp in gameData.objectWordToThing:
-          temp = gameData.objectWordToThing[temp]
-          if temp in gameData.exits[gameData.currentRoom]:
-            if not gameData.isLocked[temp]:
-              setSubTextBoxLine("It's already <orange>unlocked</>.", 1)
-            elif gameData.needsKey[temp] in gameData.inventory[playerCharacter]:
-              setSubTextBoxLine("You <orange>unlock</> it.", 1)
-              gameData.isLocked[temp] = false
-            else:
-              setSubTextBoxLine("You are missing the key.", 1)
-          else:
-            setSubTextBoxLine("Nowhere to be seen.", 1)
-      else:
-        setSubTextBoxLine("Nowhere to be seen.", 1)
-    of "enter":
-      var temp = input.substr(verb.len).strip().toLower()
-      if temp.isEmptyOrWhitespace():
-        setSubTextBoxLine("<orange>Enter</> what?", 1)
-      elif temp in gameData.objectWordToThing:
-          temp = gameData.objectWordToThing[temp]
-          if temp in gameData.exits[gameData.currentRoom]:
-            if not gameData.isLocked[temp]:
-              gameData.currentRoom = gameData.leadsTo[temp]
-              setDisplayTitle(gameData.getTitle(gameData.currentRoom))
-              setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
-              setSubTextBoxLine("You <orange>enter</>...", 1)
-            else:
-              setDisplayTitle(gameData.getTitle(temp))
-              setTextBoxText(gameData.getLockDesc(temp))
-              setSubTextBoxLine("Locked.", 1)
-      else:
-        setSubTextBoxLine("Nope.", 1)
-    of "examine":
-      var temp = input.substr(verb.len).strip().toLower()
-      if temp.isEmptyOrWhitespace():
-        setSubTextBoxLine("<orange>Examine</> what?", 1)
-      elif temp in gameData.objectWordToThing:
-          temp = gameData.objectWordToThing[temp]
-          if temp in gameData.inventory[gameData.currentRoom] or temp in gameData.inventory[playerCharacter] or temp in gameData.exits[gameData.currentRoom]:
-            setTextBoxText(gameData.getSelfDesc(temp))
-            setDisplayTitle(gameData.getTitle(temp))
-            setSubTextBoxLine("You take a closer look...", 1)
-          else:
-            setSubTextBoxLine("Nowhere to be seen.", 1)
-      else:
-        setSubTextBoxLine("Nowhere to be seen.", 1)
-    of "look", "back":
-      setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
-      setDisplayTitle(gameData.getTitle(gameData.currentRoom))
-      setSubTextBoxLine("You <orange>look</> around...", 1)
-    of "drop":
-      var temp = input.substr(verb.len).strip().toLower()
-      if temp.isEmptyOrWhitespace():
-        setSubTextBoxLine("<orange>Drop</> what?", 1)
-      elif temp in gameData.objectWordToThing:
-        temp = gameData.objectWordToThing[temp]
-        if temp in gameData.inventory[playerCharacter]:
-          gameData.inventory.addToSeqInTable(gameData.currentRoom, temp)
-          gameData.inventory.removeFromSeqInTable(playerCharacter, temp)
-          setSubTextBoxLine("You <orange>drop</> the item.", 1)
-          setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
-        else:
-          setSubTextBoxLine("Not in your <orange>inventory</>...", 1)
-      else:
-        setSubTextBoxLine("Not in your <orange>inventory</>...", 1)
-    of "take":
-      var temp = input.substr(verb.len).strip().toLower()
-      if temp.isEmptyOrWhitespace():
-        setSubTextBoxLine("<orange>Take</> what?", 1)
-      elif temp in gameData.objectWordToThing:
-          temp = gameData.objectWordToThing[temp]
-          if temp in gameData.getInv(gameData.currentRoom):
-            if gameData.canPickup[temp]:
-              setSubTextBoxLine("You put it in your <orange>inventory</>.", 1)
-              gameData.inventory.addToSeqInTable(playerCharacter, temp)
-              gameData.inventory.removeFromSeqInTable(gameData.currentRoom, temp)
-              setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
-            else:
-              setSubTextBoxLine("You can't pick that up.", 1)
-          else:
-            setSubTextBoxLine("Nowhere to be seen.", 1)
-      else:
-        setSubTextBoxLine("Nowhere to be seen.", 1)
-    of "inventory":
-      setDisplayTitle("In your <orange>inventory</> you find:")
-      setTextBoxText("")
-      for thing in gameData.inventory[playerCharacter]:
-        addTextBoxText(gameData.titles[thing] & "\n")
-
-    #end of normal parse
-    if verb in gameData.interactionVerbs:
+proc checkInteraction(verb, objectWord: string, gameData: var GameData) =
+  if verb in gameData.interactionVerbs:
       var toRemove: seq[InteractionReq] = @[]
       for req in gameData.interactionVerbs[verb]:
         var
-          objectWord = input.substr(verb.len).strip().toLower()
           isCorrectRoom = req.room.isEmptyOrWhitespace() or gameData.currentRoom == req.room
           isCorrectObject = req.objectWord.isEmptyOrWhitespace() or objectWord in gameData.objectWordToThing and gameData.objectWordToThing[objectWord] == req.objectWord
           hasCorrectItems = true
           hasCorrectExits = true
+          hasCorrectFlags = true
+
+        if req.flags.len > 0:
+          for flag in req.flags:
+            if not (flag in gameData.flags and gameData.flags[flag]):
+              hasCorrectFlags = false
+              break
 
         if req.inventoryHas.len > 0:
           for pair in req.inventoryHas:
             if pair.inv notin gameData.inventory or pair.item notin gameData.inventory[pair.inv]:
               hasCorrectItems = false
-        
+              break
+
         if req.hasExit.len > 0:
           for pair in req.hasExit:
             if pair.inv notin gameData.exits or pair.item notin gameData.exits[pair.inv]:
               hasCorrectExits = false
+              break
 
-        if isCorrectRoom and isCorrectObject and hasCorrectItems and hasCorrectExits:
+        if isCorrectRoom and isCorrectObject and hasCorrectItems and hasCorrectExits and hasCorrectFlags:
           for gameCommand in gameData.interactionEvents[req.eventKey]:
             case gameCommand.tokens[0]:
             of "audio":
@@ -415,12 +320,178 @@ proc parseInput(input: string, gameData: var GameData) =
                 gameData.lockDescriptions[gameCommand.tokens[2]] = gameCommand.tokens[3]
             of "refresh":
               setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
+            of "flag":
+              case gameCommand.tokens[1]:
+              of "set":
+                gameData.flags[gameCommand.tokens[2]] = true
+              of "unset":
+                gameData.flags[gameCommand.tokens[2]] = false
 
           if req.once:
             toRemove.add(req)
       #after for
       for req in toRemove:
         gameData.interactionVerbs.removeFromSeqInTable(verb, req)
+
+proc newGame(gameData: var GameData) =
+  for channel in countup(0, 15):
+        music(channel, -1)
+  gameData = getAllGameData()
+  setTextBoxText(getFullRoomDesc(gameData, gameData.currentRoom))
+  displayTitle = gameData.getTitle(gameData.currentRoom)
+  checkInteraction("!init", "", gameData)
+
+proc checkForNewGameSaveLoad(verb, objectWord: string, gameData: var GameData) =
+  echo "hello"
+  case verb:
+  of "!newgame":
+    gameData.newGame()
+  of "!save":
+    echo "saving"
+    if objectWord.len > 0:
+      setSubTextBoxLine("Trying to save...", 1)
+      try:
+        var strm = newFileStream(objectWord & ".save", fmWrite)
+        store(strm, gameData)
+        strm.close()
+        setSubTextBoxLine("Saved...", 2)  
+      except:
+        setSubTextBoxLine("Error, check inputs and permissions", 2) 
+    else:
+      setSubTextBoxLine("You need to name the save file", 1)
+  of "!load":
+    if objectWord.len > 0:
+      setSubTextBoxLine("Trying to load...", 1)
+      try:
+        load(newFileStream(objectWord & ".save", fmRead), gameData)
+        setSubTextBoxLine("Loaded...", 2)  
+        setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
+        setDisplayTitle(gameData.getTitle(gameData.currentRoom))
+      except:
+        setSubTextBoxLine("Error, check inputs and permissions", 2) 
+    else:
+      setSubTextBoxLine("You need to name the save file", 1)
+
+proc parseVerb(input: string, output: var string, start: int = 0): int =
+  for c in input[start .. ^1]:
+    if c.isAlphaNumeric or c == '!':
+      output &= c
+      result += 1
+    if c == ' ':
+      return
+
+proc parseInput(input: string, gameData: var GameData) =
+  ## Parses player input and does too much
+  echo "input: ", input
+  var verb: string
+  setSubTextBoxLines(">"&input)
+  if parseVerb(input.strip().toLower(), verb, 0) != 0:
+    echo verb
+    echo gameData.isGameOver
+    if not gameData.isGameOver:
+      echo "playing"
+      checkForNewGameSaveLoad(verb, input.substr(verb.len).strip(), gameData)
+      case verb:
+      of "debug":
+        echo "game state:"
+        echo gameData
+      of "unlock":
+        var temp = input.substr(verb.len).strip().toLower()
+        if temp.isEmptyOrWhitespace():
+          setSubTextBoxLine("<orange>Unlock</> what?", 1)
+        elif temp in gameData.objectWordToThing:
+            temp = gameData.objectWordToThing[temp]
+            if temp in gameData.exits[gameData.currentRoom]:
+              if not gameData.isLocked[temp]:
+                setSubTextBoxLine("It's already <orange>unlocked</>.", 1)
+              elif gameData.needsKey[temp] in gameData.inventory[playerCharacter]:
+                setSubTextBoxLine("You <orange>unlock</> it.", 1)
+                gameData.isLocked[temp] = false
+              else:
+                setSubTextBoxLine("You are missing the key.", 1)
+            else:
+              setSubTextBoxLine("Nowhere to be seen.", 1)
+        else:
+          setSubTextBoxLine("Nowhere to be seen.", 1)
+      of "enter":
+        var temp = input.substr(verb.len).strip().toLower()
+        if temp.isEmptyOrWhitespace():
+          setSubTextBoxLine("<orange>Enter</> what?", 1)
+        elif temp in gameData.objectWordToThing:
+            temp = gameData.objectWordToThing[temp]
+            if temp in gameData.exits[gameData.currentRoom]:
+              if not gameData.isLocked[temp]:
+                gameData.currentRoom = gameData.leadsTo[temp]
+                setDisplayTitle(gameData.getTitle(gameData.currentRoom))
+                setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
+                setSubTextBoxLine("You <orange>enter</>...", 1)
+              else:
+                setDisplayTitle(gameData.getTitle(temp))
+                setTextBoxText(gameData.getLockDesc(temp))
+                setSubTextBoxLine("Locked.", 1)
+        else:
+          setSubTextBoxLine("Nope.", 1)
+      of "examine":
+        var temp = input.substr(verb.len).strip().toLower()
+        if temp.isEmptyOrWhitespace():
+          setSubTextBoxLine("<orange>Examine</> what?", 1)
+        elif temp in gameData.objectWordToThing:
+            temp = gameData.objectWordToThing[temp]
+            if temp in gameData.inventory[gameData.currentRoom] or temp in gameData.inventory[playerCharacter] or temp in gameData.exits[gameData.currentRoom]:
+              setTextBoxText(gameData.getSelfDesc(temp))
+              setDisplayTitle(gameData.getTitle(temp))
+              setSubTextBoxLine("You take a closer look...", 1)
+            else:
+              setSubTextBoxLine("Nowhere to be seen.", 1)
+        else:
+          setSubTextBoxLine("Nowhere to be seen.", 1)
+      of "look", "back":
+        setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
+        setDisplayTitle(gameData.getTitle(gameData.currentRoom))
+        setSubTextBoxLine("You <orange>look</> around...", 1)
+      of "drop":
+        var temp = input.substr(verb.len).strip().toLower()
+        if temp.isEmptyOrWhitespace():
+          setSubTextBoxLine("<orange>Drop</> what?", 1)
+        elif temp in gameData.objectWordToThing:
+          temp = gameData.objectWordToThing[temp]
+          if temp in gameData.inventory[playerCharacter]:
+            gameData.inventory.addToSeqInTable(gameData.currentRoom, temp)
+            gameData.inventory.removeFromSeqInTable(playerCharacter, temp)
+            setSubTextBoxLine("You <orange>drop</> the item.", 1)
+            setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
+          else:
+            setSubTextBoxLine("Not in your <orange>inventory</>...", 1)
+        else:
+          setSubTextBoxLine("Not in your <orange>inventory</>...", 1)
+      of "take":
+        var temp = input.substr(verb.len).strip().toLower()
+        if temp.isEmptyOrWhitespace():
+          setSubTextBoxLine("<orange>Take</> what?", 1)
+        elif temp in gameData.objectWordToThing:
+            temp = gameData.objectWordToThing[temp]
+            if temp in gameData.getInv(gameData.currentRoom):
+              if gameData.canPickup[temp]:
+                setSubTextBoxLine("You put it in your <orange>inventory</>.", 1)
+                gameData.inventory.addToSeqInTable(playerCharacter, temp)
+                gameData.inventory.removeFromSeqInTable(gameData.currentRoom, temp)
+                setTextBoxText(gameData.getFullRoomDesc(gameData.currentRoom))
+              else:
+                setSubTextBoxLine("You can't pick that up.", 1)
+            else:
+              setSubTextBoxLine("Nowhere to be seen.", 1)
+        else:
+          setSubTextBoxLine("Nowhere to be seen.", 1)
+      of "inventory":
+        setDisplayTitle("In your <orange>inventory</> you find:")
+        setTextBoxText("")
+        for thing in gameData.inventory[playerCharacter]:
+          addTextBoxText(gameData.titles[thing] & "\n")
+
+      #end of normal parse
+      checkInteraction(verb, input.substr(verb.len).strip().toLower(), gameData)
+    else:
+      checkForNewGameSaveLoad(verb, input.substr(verb.len).strip(), gameData)
 
 proc getScreenDimensions(): array[2, int] =
   result[0] = screenWidth
@@ -448,8 +519,6 @@ proc gameInit() =
   let windowWidth = (screenWidth.float32 * getScreenScale()).int
   let windowHeight = (screenHeight.float32 * getScreenScale()).int
   setTargetSize(windowWidth div scale, windowHeight div scale)
-  setTextBoxText(getFullRoomDesc(gameData, gameData.currentRoom))
-  displayTitle = gameData.getTitle(gameData.currentRoom)
 
 proc gameUpdate(dt: float32) =
   var
@@ -583,7 +652,7 @@ proc gameDraw() =
 # initialization
 nico.init("nico", "test")
 
-gameData = getAllGameData()
+gameData.newGame()
 
 # we want a dynamic sized screen with perfect square pixels
 fixedSize(false)

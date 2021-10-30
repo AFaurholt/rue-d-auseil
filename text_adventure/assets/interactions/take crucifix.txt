@@ -1,0 +1,10 @@
+verb:take
+object:crucifix
+
+inventory:playerCharacter/crucifix
+
+event:desc/room/ab nostralabe/nostralabe room
+
+event:audio/play/whisper
+#dies irae or durufle
+once

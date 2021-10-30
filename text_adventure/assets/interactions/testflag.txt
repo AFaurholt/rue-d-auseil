@@ -1,0 +1,4 @@
+verb:!init
+event:flag/set/bob
+event:subDisplay/2/bob set
+event:display/missing

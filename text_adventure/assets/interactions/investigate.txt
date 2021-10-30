@@ -1,0 +1,12 @@
+verb:investigate
+room:bedroom
+
+inventory:playerCharacter/aa pages
+
+event:display/spiral
+
+event:desc/room/ab nostralabe/haywire
+
+event:audio/play/whisper
+
+once

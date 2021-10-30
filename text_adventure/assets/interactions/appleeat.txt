@@ -1,0 +1,20 @@
+verb:eat
+object:apple
+room:hell
+inventory: playerCharacter/apple
+
+event: item/add/key/hell
+event: item/del/pitchfork/hell
+
+event: display/vvv
+event: item/del/apple/playerCharacter
+
+event: desc/self/lava lake/appleworm
+event: desc/room/lava lake/appleeaten
+
+event:subDisplay/2/<orange>Hey, why did you eat my apple!?</>
+
+event: audio/play/whisper
+
+once
+

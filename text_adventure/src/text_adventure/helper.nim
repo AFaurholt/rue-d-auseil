@@ -13,6 +13,7 @@ type
     eventKey*: string
     once*: bool
     hasExit*: seq[InventoryItemPair]
+    flags*: seq[string]
   GameData* = object
     startRoom*: string
     descriptions*: TableRef[string, string]
@@ -38,6 +39,8 @@ type
     audioLevels*: TableRef[string, float32]
     fadeOutQueue*: seq[AudioFadeInfo]
     fadeInQueue*: seq[AudioFadeInfo]
+    flags*: TableRef[string, bool]
+    isGameOver*: bool
 
 const
   colorReplaceTuples* = [
@@ -179,6 +182,10 @@ proc getAllInteractions*(path: string, gameData: var GameData) =
           for subPair in pair[1].split(";"):
             let subSubPair = subPair.split("/")
             requirements.inventoryHas.add((inv: subSubPair[0].strip(), item: subSubPair[1].strip()))
+        of "flag":
+          for flag in pair[1].split(","):
+            requirements.flags.add(flag.strip())
+          
     #end of lines
     gameData.interactionVerbs.addToSeqInTable(verb, requirements)
 
@@ -203,6 +210,7 @@ proc getAllGameData*(): GameData =
     ,availableChannels: @[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
     ,isMusic: newTable[string, bool]()
     ,audioLevels: newTable[string, float32]()
+    ,flags: newTable[string, bool]()
   )
   result.inventory[playerCharacter] = @[]
 
